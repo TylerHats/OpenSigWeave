@@ -1,0 +1,6 @@
+venv/
+*.db
+*.sqlite
+.env
+__pycache__/
+branding/
