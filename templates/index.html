@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if app_name %}{{ app_name }} Admin{% else %}Signature Admin{% endif %}</title>
+    {% if has_favicon %}
+    <link rel="icon" href="/branding/favicon.ico" type="image/x-icon">
+    {% endif %}
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { gray: { 800: '#1f2937', 900: '#111827' } } } }
+        }
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans antialiased">
+
+    <nav class="bg-gray-800 border-b border-gray-700 px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            {% if has_logo %}
+                <img src="/branding/logo.png" alt="Company Logo" class="h-8">
+            {% endif %}
+            
+            {% if app_name %}
+                <div class="text-xl font-bold tracking-wider text-blue-400">{{ app_name }}</div>
+            {% endif %}
+        </div>
+        <div>
+            <span class="text-sm text-gray-400">Admin Portal</span>
+        </div>
+    </nav>
+
+    <div x-data="domainManager()" x-init="fetchDomains()" class="max-w-6xl mx-auto p-6 mt-8">
+        
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-semibold">Managed Domains</h1>
+            <button @click="createDomain()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded shadow transition">
+                + Add Domain
+            </button>
+        </div>
+
+        <div class="bg-gray-800 rounded-lg shadow overflow-hidden">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-700 text-gray-300 text-sm uppercase tracking-wider">
+                        <th class="px-6 py-4 font-medium">Domain Name</th>
+                        <th class="px-6 py-4 font-medium">Status</th>
+                        <th class="px-6 py-4 font-medium text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-700">
+                    <template x-for="domain in domains" :key="domain.id">
+                        <tr class="hover:bg-gray-750 transition duration-150">
+                            <td class="px-6 py-4 font-medium text-white" x-text="domain.domain_name"></td>
+                            <td class="px-6 py-4">
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full" 
+                                      :class="domain.is_active ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'"
+                                      x-text="domain.is_active ? 'Active' : 'Disabled'"></span>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <button class="text-blue-400 hover:text-blue-300 text-sm font-medium">Edit Templates</button>
+                            </td>
+                        </tr>
+                    </template>
+                    <tr x-show="domains.length === 0">
+                        <td colspan="3" class="px-6 py-8 text-center text-gray-500">No domains configured yet.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function domainManager() {
+            return {
+                domains: [],
+                async fetchDomains() {
+                    const response = await fetch('/domains/');
+                    this.domains = await response.json();
+                },
+                async createDomain() {
+                    const newDomain = prompt("Enter the new domain name (e.g., example.com):");
+                    if (!newDomain) return;
+
+                    const response = await fetch('/domains/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ domain_name: newDomain, is_active: true })
+                    });
+
+                    if (response.ok) {
+                        this.fetchDomains(); // Refresh the list
+                    } else {
+                        const error = await response.json();
+                        alert("Error: " + error.detail);
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
