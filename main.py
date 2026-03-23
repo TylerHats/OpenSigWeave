@@ -29,7 +29,7 @@ class DomainDB(Base):
     domain_name = Column(String, unique=True, index=True)
     is_active = Column(Boolean, default=True)
     allow_overrides = Column(Boolean, default=True)
-    inject_on_replies = Column(Boolean, default=False) # NEW: Lua Script Flag
+    inject_on_replies = Column(Boolean, default=False)
     template_html = Column(Text, default="<p>Best Regards,</p><p><br></p><p><strong>{{ first_name }} {{ last_name }}</strong></p><p>{{ title }} | {{ domain_name }}</p>")
 
 class UserOverrideDB(Base):
@@ -37,6 +37,7 @@ class UserOverrideDB(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_email = Column(String, unique=True, index=True)
     html_content = Column(Text, default="")
+    is_disabled = Column(Boolean, default=False) # NEW: The Kill Switch
 
 Base.metadata.create_all(bind=engine)
 
@@ -48,7 +49,7 @@ class DomainCreate(BaseModel):
 class DomainUpdate(BaseModel):
     is_active: bool
     allow_overrides: bool
-    inject_on_replies: bool # NEW
+    inject_on_replies: bool
     template_html: str
 
 class OverrideUpdate(BaseModel):
@@ -57,6 +58,7 @@ class OverrideUpdate(BaseModel):
 class AdminOverrideSave(BaseModel):
     user_email: str
     html_content: str
+    is_disabled: bool = False # NEW
 
 # 3. FastAPI App Initialization
 app = FastAPI(title="OpenSigWeave API", version="1.0.0", docs_url=None, redoc_url=None, openapi_url=None)
@@ -146,11 +148,14 @@ def read_root(request: Request, db: Session = Depends(get_db)):
     
     domain_part = email.split('@')[-1] if '@' in email else ''
     domain_obj = db.query(DomainDB).filter(DomainDB.domain_name == domain_part).first()
+    override_obj = db.query(UserOverrideDB).filter(UserOverrideDB.user_email == email).first()
     
     can_edit = False
     lock_reason = "Your email domain is not registered in this system."
     
-    if domain_obj:
+    if override_obj and override_obj.is_disabled:
+        lock_reason = "Your signature has been explicitly disabled by an administrator."
+    elif domain_obj:
         if not domain_obj.is_active:
             lock_reason = "Signatures for your domain are currently disabled by the administrator."
         elif not domain_obj.allow_overrides:
@@ -189,7 +194,7 @@ def update_domain(domain_id: int, domain_update: DomainUpdate, db: Session = Dep
     if not db_domain: raise HTTPException(status_code=404)
     db_domain.is_active = domain_update.is_active
     db_domain.allow_overrides = domain_update.allow_overrides
-    db_domain.inject_on_replies = domain_update.inject_on_replies # NEW
+    db_domain.inject_on_replies = domain_update.inject_on_replies
     db_domain.template_html = domain_update.template_html
     db.commit()
     return {"status": "success"}
@@ -242,8 +247,11 @@ def get_domain_overrides(domain_name: str, request: Request, db: Session = Depen
 def save_admin_override(req: AdminOverrideSave, request: Request, db: Session = Depends(get_db)):
     if not is_admin_user(request): raise HTTPException(status_code=403, detail="Admins only")
     override = db.query(UserOverrideDB).filter(UserOverrideDB.user_email == req.user_email).first()
-    if override: override.html_content = req.html_content
-    else: db.add(UserOverrideDB(user_email=req.user_email, html_content=req.html_content))
+    if override: 
+        override.html_content = req.html_content
+        override.is_disabled = req.is_disabled
+    else: 
+        db.add(UserOverrideDB(user_email=req.user_email, html_content=req.html_content, is_disabled=req.is_disabled))
     db.commit()
     return {"status": "success"}
 
@@ -277,8 +285,12 @@ async def get_rspamd_signature(
     if not domain_obj or not domain_obj.is_active:
         return {"html": "", "inject_on_replies": False}
         
-    # 2. Check for User Override
+    # 2. Check for User Override AND KILL SWITCH
     override = db.query(UserOverrideDB).filter(UserOverrideDB.user_email == email).first()
+    
+    # NEW: If the admin explicitly disabled this user, return nothing immediately.
+    if override and override.is_disabled:
+        return {"html": "", "inject_on_replies": False}
     
     if override:
         raw_template = override.html_content
@@ -330,7 +342,6 @@ async def get_rspamd_signature(
         except Exception as e:
             print(f"Server-to-Server Authentik Request failed: {e}")
             
-    # Fallback if API fails completely
     if not first_name:
         first_name = email.split('@')[0].capitalize()
             
@@ -345,5 +356,5 @@ async def get_rspamd_signature(
     # 5. Deliver to Rspamd
     return {
         "html": parsed,
-        "inject_on_replies": domain_obj.inject_on_replies # Lua will read this flag!
+        "inject_on_replies": domain_obj.inject_on_replies
     }
