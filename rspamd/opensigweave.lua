@@ -1,6 +1,7 @@
 local rspamd_logger = require "rspamd_logger"
 local rspamd_http = require "rspamd_http"
 local ucl = require "ucl"
+local lua_mime = require "lua_mime"
 
 -- ==========================================
 -- OPENSIGWEAVE CONFIGURATION
@@ -107,10 +108,10 @@ local function inject_signature(task)
                 end
 
                 -- 5. Rewrite the MIME Part
-                -- (Note: Rspamd uses task:set_milter_reply or the lua_mime module to commit these changes 
-                -- depending on your specific Mailcow/Rspamd version routing.)
                 if new_content ~= content then
-                    -- Execute MIME replacement logic here
+                    -- This safely injects the new HTML and recalculates the MIME boundaries
+                    lua_mime.modify_text(task, part, new_content)
+                    
                     rspamd_logger.infox(task, "OpenSigWeave: Successfully appended signature for %s", sender_email)
                 end
             end
