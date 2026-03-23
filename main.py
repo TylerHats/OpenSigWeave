@@ -1,7 +1,8 @@
 import os
 import json
 import httpx  # Added for server-to-server Authentik requests
-from fastapi import FastAPI, Depends, HTTPException, Request
+import re
+from fastapi import FastAPI, Depends, HTTPException, Request, Header
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -256,19 +257,27 @@ def delete_admin_override(override_id: int, request: Request, db: Session = Depe
 # THE RSPAMD COMPILATION ENGINE
 # ==========================================
 @app.get("/api/signature/{email}")
-async def get_rspamd_signature(email: str, db: Session = Depends(get_db)):
+async def get_rspamd_signature(
+    email: str, 
+    x_engine_key: Optional[str] = Header(None), 
+    db: Session = Depends(get_db)
+):
+    # --- SECURITY LOCK ---
+    expected_key = os.environ.get('ENGINE_API_KEY')
+    if not expected_key or x_engine_key != expected_key:
+        raise HTTPException(status_code=401, detail="Unauthorized Engine Request")
+        
     # 1. Look up Domain Rules
     domain_part = email.split('@')[-1] if '@' in email else ''
     domain_obj = db.query(DomainDB).filter(DomainDB.domain_name == domain_part).first()
     
-    # If domain doesn't exist or is disabled, return nothing to Rspamd
     if not domain_obj or not domain_obj.is_active:
         return {"html": ""}
         
     # 2. Check for User Override
     override = db.query(UserOverrideDB).filter(UserOverrideDB.user_email == email).first()
     
-    if override and domain_obj.allow_overrides:
+    if override:
         raw_template = override.html_content
     else:
         raw_template = domain_obj.template_html
@@ -277,7 +286,7 @@ async def get_rspamd_signature(email: str, db: Session = Depends(get_db)):
         return {"html": ""}
         
     # 3. Fetch live data from Authentik API
-    authentik_url = os.environ.get('AUTHENTIK_URL')
+    authentik_url = os.environ.get('AUTHENTIK_URL', '').rstrip('/')
     api_token = os.environ.get('AUTHENTIK_API_TOKEN')
     
     first_name, last_name, title, phone = "", "", "", ""
@@ -290,7 +299,8 @@ async def get_rspamd_signature(email: str, db: Session = Depends(get_db)):
         search_url = f"{authentik_url}/api/v3/core/users/?search={email}"
         
         try:
-            async with httpx.AsyncClient() as client:
+            # FIX 1: verify=False allows internal homelab API calls to bypass strict SSL
+            async with httpx.AsyncClient(verify=False) as client:
                 response = await client.get(search_url, headers=headers, timeout=5.0)
                 if response.status_code == 200:
                     data = response.json()
@@ -304,18 +314,32 @@ async def get_rspamd_signature(email: str, db: Session = Depends(get_db)):
                         last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
                         
                         attributes = user_data.get('attributes', {})
-                        title = attributes.get('title', '')
-                        phone = attributes.get('phone', '')
+                        
+                        # FIX 2: Authentik stores custom attributes as lists. Safely extract index [0].
+                        title_val = attributes.get('title', [''])
+                        phone_val = attributes.get('phone', [''])
+                        
+                        title = title_val[0] if isinstance(title_val, list) and title_val else str(title_val)
+                        phone = phone_val[0] if isinstance(phone_val, list) and phone_val else str(phone_val)
+                        
+                        if title == "None": title = ""
+                        if phone == "None": phone = ""
+                else:
+                    print(f"Authentik API Error: {response.status_code} - {response.text}")
         except Exception as e:
-            print(f"Server-to-Server Authentik API Request failed for {email}: {e}")
+            print(f"Server-to-Server Authentik Request failed: {e}")
             
-    # 4. Compile the final HTML string
-    parsed = raw_template.replace("{{ first_name }}", first_name)
-    parsed = parsed.replace("{{ last_name }}", last_name)
-    parsed = parsed.replace("{{ title }}", title)
-    parsed = parsed.replace("{{ phone }}", phone)
-    parsed = parsed.replace("{{ email }}", email)
-    parsed = parsed.replace("{{ domain_name }}", domain_part)
+    # Fallback if API fails completely
+    if not first_name:
+        first_name = email.split('@')[0].capitalize()
+            
+    # 4. Compile the HTML using Regex
+    parsed = re.sub(r'\{\{\s*first_name\s*\}\}', first_name, raw_template)
+    parsed = re.sub(r'\{\{\s*last_name\s*\}\}', last_name, parsed)
+    parsed = re.sub(r'\{\{\s*title\s*\}\}', title, parsed)
+    parsed = re.sub(r'\{\{\s*phone\s*\}\}', phone, parsed)
+    parsed = re.sub(r'\{\{\s*email\s*\}\}', email, parsed)
+    parsed = re.sub(r'\{\{\s*domain_name\s*\}\}', domain_part, parsed)
     
     # 5. Deliver to Rspamd
     return {"html": parsed}

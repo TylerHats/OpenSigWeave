@@ -19,9 +19,8 @@
         .ql-toolbar .ql-picker { color: #d1d5db; }
         .ql-container { border-color: #4b5563 !important; border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; border-bottom-left-radius: 0.5rem !important; border-bottom-right-radius: 0.5rem !important; font-family: inherit; font-size: 1rem; background-color: #ffffff; color: #000000; overflow: hidden !important; }
         .ql-editor { overflow-y: auto; height: 100%; padding: 1rem 1.5rem 2.5rem 1.5rem !important; }
-        .ql-snow.ql-toolbar button:hover .ql-stroke, .ql-snow .ql-toolbar button:focus .ql-stroke, .ql-snow.ql-toolbar button.ql-active .ql-stroke, .ql-snow.ql-toolbar .ql-picker-label:hover .ql-stroke, .ql-snow.ql-toolbar .ql-picker-label.ql-active .ql-stroke, .ql-snow.ql-toolbar .ql-picker-item:hover .ql-stroke, .ql-snow.ql-toolbar .ql-picker-item.ql-selected .ql-stroke { stroke: #60a5fa; }
+        .ql-snow.ql-toolbar button:hover .ql-stroke, .ql-snow .ql-toolbar button:focus .ql-stroke, .ql-snow.ql-toolbar button.ql-active .ql-stroke, .ql-snow .ql-toolbar button.ql-active .ql-stroke, .ql-snow.ql-toolbar .ql-picker-label:hover .ql-stroke, .ql-snow .ql-toolbar .ql-picker-label:hover .ql-stroke, .ql-snow.ql-toolbar .ql-picker-label.ql-active .ql-stroke, .ql-snow .ql-toolbar .ql-picker-label.ql-active .ql-stroke, .ql-snow.ql-toolbar .ql-picker-item:hover .ql-stroke, .ql-snow .ql-toolbar .ql-picker-item:hover .ql-stroke, .ql-snow.ql-toolbar .ql-picker-item.ql-selected .ql-stroke, .ql-snow .ql-toolbar .ql-picker-item.ql-selected .ql-stroke { stroke: #60a5fa; }
         
-        /* Smooth CSS Toast Animation */
         @keyframes slideUpFade {
             0% { transform: translateY(100%); opacity: 0; }
             10% { transform: translateY(0); opacity: 1; }
@@ -35,19 +34,15 @@
 
     <div x-data="{ toasts: [] }" @notify.window="toasts.push({id: Date.now(), msg: $event.detail.msg, type: $event.detail.type || 'success'}); setTimeout(() => { toasts.shift() }, 2900)" class="fixed bottom-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none">
         <template x-for="toast in toasts" :key="toast.id">
-            <div class="animate-toast px-4 py-3 rounded shadow-lg text-white font-medium text-sm pointer-events-auto flex items-center gap-2" :class="toast.type === 'error' ? 'bg-red-600' : 'bg-green-600'">
-                 <span x-text="toast.msg"></span>
-            </div>
+            <div class="animate-toast px-4 py-3 rounded shadow-lg text-white font-medium text-sm pointer-events-auto flex items-center gap-2" :class="toast.type === 'error' ? 'bg-red-600' : 'bg-green-600'"><span x-text="toast.msg"></span></div>
         </template>
     </div>
 
-    <script>
-        const userData = { first_name: "{{ first_name }}", last_name: "{{ last_name }}", email: "{{ user.email }}", title: "{{ title }}", phone: "{{ phone }}" };
-    </script>
+    <script>const userData = { first_name: "{{ first_name }}", last_name: "{{ last_name }}", email: "{{ user.email }}", title: "{{ title }}", phone: "{{ phone }}" };</script>
 
     <nav class="bg-gray-800 border-b border-gray-700 px-6 py-4 flex items-center justify-between">
         <div class="flex items-center space-x-4">
-            {% if has_logo %}<img src="/branding/logo.png" alt="Company Logo" class="h-8">{% endif %}
+            {% if has_logo %}<img src="/branding/logo.png" alt="Company Logo" class="h-8 w-auto max-w-[250px] object-contain">{% endif %}
             {% if app_name %}<div class="text-xl font-bold tracking-wider" style="color: {{ app_color }};">{{ app_name }}</div>{% endif %}
         </div>
         <div class="flex items-center space-x-6">
@@ -56,10 +51,7 @@
                 {% if is_admin %}<button @click="tab = 'admin'" :class="tab === 'admin' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'" class="px-4 py-1.5 rounded-md text-sm font-medium transition flex items-center gap-2">Admin</button>{% endif %}
             </div>
             <div class="h-6 w-px bg-gray-600"></div>
-            <div class="text-sm">
-                <span class="text-gray-400 block">{{ user.email }}</span>
-                <a href="/logout" class="text-blue-400 hover:text-blue-300 text-xs">Sign Out</a>
-            </div>
+            <div class="text-sm"><span class="text-gray-400 block">{{ user.email }}</span><a href="/logout" class="text-blue-400 hover:text-blue-300 text-xs">Sign Out</a></div>
         </div>
     </nav>
 
@@ -70,10 +62,7 @@
                 <div class="bg-gray-800 rounded-lg p-5 shadow border border-gray-700">
                     <h2 class="text-lg font-semibold text-white mb-4">Your Profile Data</h2>
                     <div class="space-y-3 text-sm text-gray-300 mb-6">
-                        <p><span class="font-medium text-gray-400 w-16 inline-block">Name:</span> {{ user.name }}</p>
-                        <p><span class="font-medium text-gray-400 w-16 inline-block">Email:</span> {{ user.email }}</p>
-                        <p><span class="font-medium text-gray-400 w-16 inline-block">Title:</span> {{ title }}</p>
-                        <p><span class="font-medium text-gray-400 w-16 inline-block">Phone:</span> {{ phone }}</p>
+                        <p><span class="font-medium text-gray-400 w-16 inline-block">Name:</span> {{ user.name }}</p><p><span class="font-medium text-gray-400 w-16 inline-block">Email:</span> {{ user.email }}</p><p><span class="font-medium text-gray-400 w-16 inline-block">Title:</span> {{ title }}</p><p><span class="font-medium text-gray-400 w-16 inline-block">Phone:</span> {{ phone }}</p>
                     </div>
                     <a href="{{ authentik_settings_url }}" target="_blank" class="w-full block text-center bg-gray-700 hover:bg-gray-600 text-white py-2 rounded transition text-sm border border-gray-600">Edit Profile in Authentik ↗</a>
                 </div>
@@ -86,27 +75,22 @@
             </div>
 
             <div class="lg:col-span-2 space-y-6">
-                
                 <div class="relative bg-gray-800 rounded-lg shadow border border-gray-700 flex flex-col overflow-hidden">
-                    
                     {% if not can_edit %}
                     <div class="absolute inset-0 z-10 bg-gray-900/80 backdrop-blur-sm flex flex-col items-center justify-center p-8 text-center rounded-lg">
                         <svg class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                        <h3 class="text-xl font-bold text-white mb-2">Editing Disabled</h3>
-                        <p class="text-gray-300 max-w-md">{{ lock_reason }}</p>
+                        <h3 class="text-xl font-bold text-white mb-2">Editing Disabled</h3><p class="text-gray-300 max-w-md">{{ lock_reason }}</p>
                     </div>
                     {% endif %}
 
                     <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800">
                         <h2 class="text-lg font-semibold text-white">Custom Override Signature</h2>
                         <div class="flex gap-2">
-                            <button onclick="clearUserSignature()" class="bg-red-600 hover:bg-red-500 text-white px-4 py-1.5 rounded text-sm transition shadow" {% if not can_edit %}disabled{% endif %}>Clear Override</button>
+                            <button @click="$dispatch('open-confirm', { action: 'clear-user' })" class="bg-red-600 hover:bg-red-500 text-white px-4 py-1.5 rounded text-sm transition shadow" {% if not can_edit %}disabled{% endif %}>Clear Override</button>
                             <button onclick="saveUserSignature()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded text-sm transition shadow" {% if not can_edit %}disabled{% endif %}>Save Override</button>
                         </div>
                     </div>
-                    <div class="bg-gray-900 p-4">
-                        <div id="quill-editor" class="h-[300px]"></div>
-                    </div>
+                    <div class="bg-gray-900 p-4"><div id="quill-editor" class="h-[300px]"></div></div>
                     <div x-data="{ showHtml: false }" class="bg-gray-800 border-t border-gray-700">
                         <div class="flex justify-between items-center px-4 py-3">
                             <button @click="showHtml = !showHtml" class="text-sm font-medium text-gray-400 hover:text-white flex items-center gap-2 transition-colors"><svg class="w-4 h-4 transition-transform duration-200" :class="showHtml ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>Advanced: Edit Raw HTML</button>
@@ -118,9 +102,7 @@
                 
                 <div class="bg-gray-800 rounded-lg p-5 shadow border border-gray-700">
                     <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Default Domain Template (Read-Only)</h2>
-                    <div class="bg-white border border-gray-700 rounded p-4 min-h-[100px] text-sm text-black">
-                        {{ domain_template | safe }}
-                    </div>
+                    <div class="bg-white border border-gray-700 rounded p-4 min-h-[100px] text-sm text-black">{{ domain_template | safe }}</div>
                 </div>
             </div>
         </div>
@@ -133,11 +115,7 @@
             </div>
             <div class="bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-700">
                 <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-gray-900 text-gray-400 text-sm uppercase tracking-wider border-b border-gray-700">
-                            <th class="px-6 py-4 font-medium">Domain Name</th><th class="px-6 py-4 font-medium">Status</th><th class="px-6 py-4 font-medium text-right">Actions</th>
-                        </tr>
-                    </thead>
+                    <thead><tr class="bg-gray-900 text-gray-400 text-sm uppercase tracking-wider border-b border-gray-700"><th class="px-6 py-4 font-medium">Domain Name</th><th class="px-6 py-4 font-medium">Status</th><th class="px-6 py-4 font-medium text-right">Actions</th></tr></thead>
                     <tbody class="divide-y divide-gray-700">
                         <template x-for="domain in domains" :key="domain.id">
                             <tr class="hover:bg-gray-750 transition duration-150">
@@ -158,18 +136,13 @@
 
     </div>
 
-    <div x-data="domainSettingsModal()" @open-domain-settings.window="open($event.detail)" @keydown.escape.window="show = false" x-show="show" style="display: none;" class="fixed inset-0 z-50 overflow-y-auto">
+    <div x-data="domainSettingsModal()" @open-domain-settings.window="open($event.detail)" @refresh-admin-overrides.window="fetchOverrides()" @keydown.escape.window="show = false" x-show="show" style="display: none;" class="fixed inset-0 z-50 overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
             <div x-show="show" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm transition-opacity" @click="show = false"></div>
-            
             <div x-show="show" class="relative inline-block align-bottom bg-gray-800 rounded-lg text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full border border-gray-700 flex flex-col max-h-[90vh]">
-                
                 <div class="px-6 py-4 border-b border-gray-700 flex justify-between items-center bg-gray-900">
                     <div class="flex items-center gap-4">
-                        <div>
-                            <h3 class="text-lg font-bold text-white">Domain Management</h3>
-                            <p class="text-sm text-blue-400" x-text="domain ? domain.domain_name : ''"></p>
-                        </div>
+                        <div><h3 class="text-lg font-bold text-white">Domain Management</h3><p class="text-sm text-blue-400" x-text="domain ? domain.domain_name : ''"></p></div>
                         <div class="h-8 w-px bg-gray-700 ml-4"></div>
                         <div class="flex gap-2 ml-4">
                             <button @click="modalTab = 'settings'" :class="modalTab === 'settings' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'" class="px-3 py-1 rounded text-sm transition">Settings & Template</button>
@@ -180,20 +153,14 @@
                 </div>
 
                 <div class="p-6 overflow-y-auto flex-grow bg-gray-800">
-                    
                     <div x-show="modalTab === 'settings'" class="space-y-6">
                         <div class="bg-gray-900 p-4 rounded-lg border border-gray-700">
                             <h4 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">General Settings</h4>
                             <label class="flex items-center cursor-pointer">
-                                <div class="relative">
-                                    <input type="checkbox" class="sr-only" x-model="allowOverrides">
-                                    <div class="block bg-gray-700 w-10 h-6 rounded-full"></div>
-                                    <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform" :class="allowOverrides ? 'translate-x-4 bg-blue-500' : ''"></div>
-                                </div>
+                                <div class="relative"><input type="checkbox" class="sr-only" x-model="allowOverrides"><div class="block bg-gray-700 w-10 h-6 rounded-full"></div><div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform" :class="allowOverrides ? 'translate-x-4 bg-blue-500' : ''"></div></div>
                                 <div class="ml-3 text-sm font-medium text-gray-300">Allow Users to Override Signature</div>
                             </label>
                         </div>
-
                         <div>
                             <h4 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-2">Master Template Editor</h4>
                             <div class="bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
@@ -210,7 +177,6 @@
                     </div>
 
                     <div x-show="modalTab === 'users'" style="display: none;" class="space-y-4">
-                        
                         <div class="flex justify-between items-center">
                             <h4 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Active User Overrides</h4>
                             <div class="flex gap-2">
@@ -232,16 +198,14 @@
 
                         <div class="bg-gray-900 rounded-lg border border-gray-700">
                             <table class="w-full text-left text-sm">
-                                <thead class="border-b border-gray-700 text-gray-400">
-                                    <tr><th class="px-4 py-2 font-medium">User Email</th><th class="px-4 py-2 font-medium text-right">Actions</th></tr>
-                                </thead>
+                                <thead class="border-b border-gray-700 text-gray-400"><tr><th class="px-4 py-2 font-medium">User Email</th><th class="px-4 py-2 font-medium text-right">Actions</th></tr></thead>
                                 <tbody class="divide-y divide-gray-800">
                                     <template x-for="user in userOverrides" :key="user.id">
                                         <tr class="hover:bg-gray-800 transition">
                                             <td class="px-4 py-3 text-gray-200" x-text="user.user_email"></td>
                                             <td class="px-4 py-3 text-right space-x-3">
                                                 <button @click="loadAdminEditor(user.user_email, user.html_content)" class="text-blue-400 hover:text-blue-300">Edit</button>
-                                                <button @click="deleteAdminOverride(user.id)" class="text-red-400 hover:text-red-300">Clear</button>
+                                                <button @click="$dispatch('open-confirm', { action: 'clear-admin', targetId: user.id })" class="text-red-400 hover:text-red-300">Clear</button>
                                             </td>
                                         </tr>
                                     </template>
@@ -265,7 +229,33 @@
 
     <div x-data="{ show: false, previewHtml: '' }" @open-preview.window="show = true; let raw = $event.detail.html; raw = raw.replace(/\{\{\s*first_name\s*\}\}/g, userData.first_name).replace(/\{\{\s*last_name\s*\}\}/g, userData.last_name).replace(/\{\{\s*title\s*\}\}/g, userData.title).replace(/\{\{\s*phone\s*\}\}/g, userData.phone).replace(/\{\{\s*email\s*\}\}/g, userData.email); previewHtml = raw;" @keydown.escape.window="show = false" x-show="show" style="display: none;" class="fixed inset-0 z-[60] overflow-y-auto"><div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0"><div x-show="show" class="fixed inset-0 bg-gray-900/90 backdrop-blur-sm transition-opacity" @click="show = false"></div><div x-show="show" class="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full border border-gray-300"><div class="bg-gray-100 px-6 py-4 border-b border-gray-300 flex justify-between items-center"><h3 class="text-lg font-bold text-gray-900">Live Signature Preview</h3><button @click="show = false" class="text-gray-500 hover:text-gray-800"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div><div class="p-8 text-black text-sm" x-html="previewHtml"></div></div></div></div>
     <div x-data="{ show: false, domainName: '' }" @open-add-domain.window="show = true; domainName = ''; setTimeout(() => $refs.domainInput.focus(), 100);" @keydown.escape.window="show = false" x-show="show" style="display: none;" class="fixed inset-0 z-[60] overflow-y-auto"><div class="flex items-center justify-center min-h-screen px-4"><div x-show="show" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm transition-opacity" @click="show = false"></div><div x-show="show" class="relative inline-block align-bottom bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl border border-gray-700 sm:max-w-lg w-full transform transition-all"><div class="px-6 pt-6 pb-4"><h3 class="text-xl font-bold text-white mb-4">Register New Mail Domain</h3><input type="text" x-ref="domainInput" x-model="domainName" @keydown.enter="$dispatch('submit-new-domain', domainName); show = false;" placeholder="e.g., hatsthings.com" class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></div><div class="bg-gray-800/50 px-6 py-4 flex flex-row-reverse border-t border-gray-700"><button @click="$dispatch('submit-new-domain', domainName); show = false;" class="ml-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium">Register Domain</button><button @click="show = false" class="px-4 py-2 bg-gray-700 text-gray-200 rounded hover:bg-gray-600 border border-gray-600 text-sm font-medium">Cancel</button></div></div></div></div>
-    <div x-data="{ show: false, domain: null, action: '', title: '', message: '' }" @open-confirm.window="show = true; domain = $event.detail.domain; action = $event.detail.action; if(action === 'toggle'){title=(domain.is_active?'Disable':'Enable')+' Domain?';message='Are you sure you want to '+(domain.is_active?'disable':'enable')+' '+domain.domain_name+'?';}else{title='Delete Domain?';message='CRITICAL WARNING: Delete '+domain.domain_name+' permanently?';}" @keydown.escape.window="show = false" x-show="show" style="display: none;" class="fixed inset-0 z-[60] overflow-y-auto"><div class="flex items-center justify-center min-h-screen px-4"><div x-show="show" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm transition-opacity" @click="show = false"></div><div x-show="show" class="relative inline-block align-bottom bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl border border-gray-700 sm:my-8 sm:align-middle sm:max-w-lg w-full transform transition-all"><div class="px-6 pt-6 pb-4 sm:flex sm:items-start"><div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full sm:mx-0 sm:h-10 sm:w-10" :class="action === 'delete' ? 'bg-red-900' : 'bg-yellow-900'"><svg class="h-6 w-6" :class="action === 'delete' ? 'text-red-400' : 'text-yellow-400'" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div><div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left"><h3 class="text-lg font-medium text-white" x-text="title"></h3><p class="text-sm text-gray-300 mt-2" x-text="message"></p></div></div><div class="bg-gray-800/50 px-6 py-4 flex flex-row-reverse border-t border-gray-700"><button @click="$dispatch('confirm-action', {domain: domain, action: action}); show = false;" class="ml-3 px-4 py-2 text-white rounded text-sm font-medium" :class="action === 'delete' ? 'bg-red-600 hover:bg-red-700' : 'bg-yellow-600 hover:bg-yellow-700'">Confirm</button><button @click="show = false" class="px-4 py-2 bg-gray-700 text-gray-200 rounded hover:bg-gray-600 border border-gray-600 text-sm font-medium">Cancel</button></div></div></div></div>
+    
+    <div x-data="{ show: false, domain: null, action: '', title: '', message: '', targetId: null }" 
+         @open-confirm.window="
+            show = true; 
+            action = $event.detail.action;
+            domain = $event.detail.domain || null; 
+            targetId = $event.detail.targetId || null;
+            if (action === 'toggle') { 
+                title = (domain.is_active ? 'Disable' : 'Enable') + ' Domain?'; 
+                message = 'Are you sure you want to ' + (domain.is_active ? 'disable' : 'enable') + ' ' + domain.domain_name + '?'; 
+            } else if (action === 'delete') { 
+                title = 'Delete Domain?'; message = 'CRITICAL WARNING: Delete ' + domain.domain_name + ' permanently?'; 
+            } else if (action === 'clear-user') {
+                title = 'Clear Custom Signature?'; message = 'Are you sure you want to clear your custom signature? Your emails will revert to the domain\'s default template.';
+            } else if (action === 'clear-admin') {
+                title = 'Clear User Override?'; message = 'Are you sure you want to permanently delete this user\'s custom signature?';
+            }
+         " 
+         @keydown.escape.window="show = false" x-show="show" style="display: none;" class="fixed inset-0 z-[60] overflow-y-auto">
+         <div class="flex items-center justify-center min-h-screen px-4"><div x-show="show" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm transition-opacity" @click="show = false"></div><div x-show="show" class="relative inline-block align-bottom bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl border border-gray-700 sm:max-w-lg w-full transform transition-all"><div class="px-6 pt-6 pb-4 sm:flex sm:items-start">
+             <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full sm:mx-0 sm:h-10 sm:w-10" :class="(action === 'delete' || action === 'clear-user' || action === 'clear-admin') ? 'bg-red-900' : 'bg-yellow-900'"><svg class="h-6 w-6" :class="(action === 'delete' || action === 'clear-user' || action === 'clear-admin') ? 'text-red-400' : 'text-yellow-400'" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div>
+             <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left"><h3 class="text-lg font-medium text-white" x-text="title"></h3><p class="text-sm text-gray-300 mt-2" x-text="message"></p></div>
+         </div><div class="bg-gray-800/50 px-6 py-4 flex flex-row-reverse border-t border-gray-700">
+             <button @click="$dispatch('confirm-action', {domain: domain, action: action, targetId: targetId}); show = false;" class="ml-3 px-4 py-2 text-white rounded text-sm font-medium" :class="(action === 'delete' || action === 'clear-user' || action === 'clear-admin') ? 'bg-red-600 hover:bg-red-700' : 'bg-yellow-600 hover:bg-yellow-700'">Confirm</button>
+             <button @click="show = false" class="px-4 py-2 bg-gray-700 text-gray-200 rounded hover:bg-gray-600 border border-gray-600 text-sm font-medium">Cancel</button>
+         </div></div></div>
+    </div>
 
     <script>
         var quill, domainQuill, adminQuill;
@@ -296,23 +286,11 @@
             if(res.ok) notify("Signature saved successfully!"); else notify("Failed to save.", "error");
         }
 
-        async function clearUserSignature() {
-            if(confirm("Are you sure you want to clear your custom signature? Your emails will revert to the domain's default template.")) {
-                const res = await fetch('/api/my-signature', { method: 'DELETE' });
-                if(res.ok) {
-                    quill.root.innerHTML = '';
-                    document.getElementById('raw-html-editor').value = '';
-                    notify("Signature cleared and removed from database!");
-                } else { notify("Failed to clear signature.", "error"); }
-            }
-        }
-
         function domainManager() { return { domains: [], async fetchDomains() { this.domains = await (await fetch('/domains/')).json(); } } }
 
         function domainSettingsModal() {
             return {
-                show: false, domain: null, allowOverrides: true, modalTab: 'settings',
-                userOverrides: [], newOverrideEmail: '', editingUserEmail: '',
+                show: false, domain: null, allowOverrides: true, modalTab: 'settings', userOverrides: [], newOverrideEmail: '', editingUserEmail: '',
                 open(domainData) {
                     this.show = true; this.domain = domainData; this.allowOverrides = domainData.allow_overrides; this.modalTab = 'settings'; this.editingUserEmail = '';
                     setTimeout(() => { domainQuill.root.innerHTML = domainData.template_html; document.getElementById('domain-raw-html-editor').value = domainData.template_html; }, 50);
@@ -322,15 +300,11 @@
                     const res = await fetch(`/api/admin/overrides/${this.domain.domain_name}`);
                     if(res.ok) this.userOverrides = await res.json();
                 },
-                // Updated load function to check for existing HTML
                 loadAdminEditor(email, directHtml = null) {
                     if(!email || !email.includes('@')) { notify("Please enter a valid email address.", "error"); return; }
                     this.editingUserEmail = email; 
-                    
-                    if (directHtml !== null) {
-                        adminQuill.root.innerHTML = directHtml;
-                    } else {
-                        // Check if they typed in an existing user
+                    if (directHtml !== null) { adminQuill.root.innerHTML = directHtml; } 
+                    else {
                         const existingUser = this.userOverrides.find(u => u.user_email === email);
                         adminQuill.root.innerHTML = existingUser ? existingUser.html_content : '';
                     }
@@ -338,12 +312,6 @@
                 async saveAdminOverride() {
                     const res = await fetch('/api/admin/overrides', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_email: this.editingUserEmail, html_content: adminQuill.root.innerHTML }) });
                     if(res.ok) { notify(`Saved signature for ${this.editingUserEmail}`); this.editingUserEmail = ''; this.fetchOverrides(); }
-                },
-                async deleteAdminOverride(id) {
-                    if(confirm("Delete this user's override?")) {
-                        const res = await fetch(`/api/admin/overrides/${id}`, { method: 'DELETE' });
-                        if(res.ok) { notify("Override deleted."); this.fetchOverrides(); }
-                    }
                 }
             }
         }
@@ -356,14 +324,25 @@
             const res = await fetch(`/domains/${e.detail.domain.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_active: e.detail.domain.is_active, allow_overrides: e.detail.allowOverrides, template_html: e.detail.html }) });
             if (res.ok) { notify("Settings saved!"); window.dispatchEvent(new CustomEvent('domain-updated')); }
         });
+        
+        // CENTRALIZED ACTION LISTENER
         window.addEventListener('confirm-action', async (e) => {
-            const { domain, action } = e.detail;
+            const { domain, action, targetId } = e.detail;
             if (action === 'toggle') {
                 const res = await fetch(`/domains/${domain.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_active: !domain.is_active, allow_overrides: domain.allow_overrides, template_html: domain.template_html }) });
                 if (res.ok) { notify("Status updated."); window.dispatchEvent(new CustomEvent('domain-updated')); window.location.reload(); }
             } else if (action === 'delete') {
                 const res = await fetch(`/domains/${domain.id}`, { method: 'DELETE' });
                 if (res.ok) { notify("Domain deleted."); window.dispatchEvent(new CustomEvent('domain-updated')); window.location.reload(); }
+            } else if (action === 'clear-user') {
+                const res = await fetch('/api/my-signature', { method: 'DELETE' });
+                if(res.ok) {
+                    quill.root.innerHTML = ''; document.getElementById('raw-html-editor').value = '';
+                    notify("Signature cleared and removed from database!");
+                } else { notify("Failed to clear signature.", "error"); }
+            } else if (action === 'clear-admin') {
+                const res = await fetch(`/api/admin/overrides/${targetId}`, { method: 'DELETE' });
+                if(res.ok) { notify("User override deleted."); window.dispatchEvent(new CustomEvent('refresh-admin-overrides')); }
             }
         });
     </script>
