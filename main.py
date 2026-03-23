@@ -9,12 +9,11 @@ from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from pydantic import BaseModel
 from typing import List, Optional
 
-# New SSO Imports
 from dotenv import load_dotenv
 from starlette.middleware.sessions import SessionMiddleware
 from authlib.integrations.starlette_client import OAuth
 
-load_dotenv() # Loads the .env file we just made
+load_dotenv()
 
 # 2. Database Setup
 SQLALCHEMY_DATABASE_URL = "sqlite:///./opensigweave.db"
@@ -27,8 +26,8 @@ class DomainDB(Base):
     id = Column(Integer, primary_key=True, index=True)
     domain_name = Column(String, unique=True, index=True)
     is_active = Column(Boolean, default=True)
-    allow_overrides = Column(Boolean, default=True) # New Setting
-    template_html = Column(Text, default="<p>Best Regards,</p><p><br></p><p><strong>{{ first_name }} {{ last_name }}</strong></p><p>{{ title }} | {{ domain_name }}</p>") # New Template
+    allow_overrides = Column(Boolean, default=True)
+    template_html = Column(Text, default="<p>Best Regards,</p><p><br></p><p><strong>{{ first_name }} {{ last_name }}</strong></p><p>{{ title }} | {{ domain_name }}</p>")
 
 class UserOverrideDB(Base):
     __tablename__ = "user_overrides"
@@ -38,7 +37,7 @@ class UserOverrideDB(Base):
 
 Base.metadata.create_all(bind=engine)
 
-# Pydantic Models for API
+# Pydantic Models
 class DomainCreate(BaseModel):
     domain_name: str
     is_active: bool = True
@@ -51,88 +50,68 @@ class DomainUpdate(BaseModel):
 class OverrideUpdate(BaseModel):
     html_content: str
 
-# 3. FastAPI App Initialization
-app = FastAPI(
-    title="OpenSigWeave API", 
-    version="0.1.0",
-    docs_url=None,
-    redoc_url=None,
-    openapi_url=None
-)
+class AdminOverrideSave(BaseModel):
+    user_email: str
+    html_content: str
 
-# Enable browser sessions for logins
+# 3. FastAPI App Initialization
+app = FastAPI(title="OpenSigWeave API", version="0.1.0", docs_url=None, redoc_url=None, openapi_url=None)
 app.add_middleware(SessionMiddleware, secret_key=os.environ.get("SECRET_KEY", "fallback-secret"))
 
-# Configure Authentik OAuth
 oauth = OAuth()
 oauth.register(
     name='authentik',
     server_metadata_url=f"{os.environ.get('AUTHENTIK_URL')}/application/o/{os.environ.get('AUTHENTIK_SLUG')}/.well-known/openid-configuration",
     client_id=os.environ.get('CLIENT_ID'),
     client_secret=os.environ.get('CLIENT_SECRET'),
-    client_kwargs={
-        'scope': 'openid email profile attributes'
-    }
+    client_kwargs={'scope': 'openid email profile attributes'}
 )
 
-# Set up templates and static files
 templates = Jinja2Templates(directory="templates")
 app.mount("/branding", StaticFiles(directory="branding"), name="branding")
 
-# Dependency to get the database session
 def get_db():
     db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    try: yield db
+    finally: db.close()
+
+def is_admin_user(request: Request):
+    user = request.session.get('user')
+    if not user: return False
+    return 'signature-admins' in user.get('groups', [])
 
 # --- Web UI Routes ---
 @app.get("/login")
 async def login(request: Request):
-    # Natively force the URL to HTTPS, ignoring proxy header confusion
     redirect_uri = request.url_for('auth').replace(scheme='https')
     return await oauth.authentik.authorize_redirect(request, str(redirect_uri))
 
 @app.get("/auth")
 async def auth(request: Request):
-    # Authentik sends them back here with a token
     try:
         token = await oauth.authentik.authorize_access_token(request)
         user = token.get('userinfo')
-        if user:
-            request.session['user'] = user
+        if user: request.session['user'] = user
     except Exception as e:
         print(f"Login failed: {e}")
     return RedirectResponse(url='/')
 
 @app.get("/logout")
 async def logout(request: Request):
-    # 1. Clear the local OpenSigWeave session
     request.session.pop('user', None)
-    
-    # 2. Redirect to Authentik to kill the master session AND tell it where to return
     authentik_url = os.environ.get('AUTHENTIK_URL')
     slug = os.environ.get('AUTHENTIK_SLUG')
     return_url = str(request.url_for('read_root')).replace('http://', 'https://')
-    
-    end_session_url = f"{authentik_url}/application/o/{slug}/end-session/?post_logout_redirect_uri={return_url}"
-    
-    return RedirectResponse(url=end_session_url)
+    return RedirectResponse(url=f"{authentik_url}/application/o/{slug}/end-session/?post_logout_redirect_uri={return_url}")
 
 @app.get("/")
-def read_root(request: Request):
+def read_root(request: Request, db: Session = Depends(get_db)):
     user = request.session.get('user')
-    
-    # THE GATEKEEPER: If not logged in, bounce to Authentik
-    if not user:
-        return RedirectResponse(url='/login')
+    if not user: return RedirectResponse(url='/login')
         
-    # Check groups (Authentik usually passes groups in the profile scope)
     user_groups = user.get('groups', [])
     is_admin = 'signature-admins' in user_groups
     is_user = 'signature-users' in user_groups
-    
     if not is_admin and not is_user:
         return templates.TemplateResponse("error.html", {"request": request, "message": "You do not have permission to access the Signature Portal."})
 
@@ -145,41 +124,47 @@ def read_root(request: Request):
         try:
             with open(settings_path, "r") as f:
                 settings = json.load(f)
-                if "app_name" in settings:
-                    app_name = settings["app_name"]
-        except Exception:
-            pass
+                if "app_name" in settings: app_name = settings["app_name"]
+        except Exception: pass
             
-    # Ensure user has attributes dictionary, then extract phone and title safely
     attributes = user.get('attributes', {}) if user else {}
     phone = attributes.get('phone', 'Not Set')
     title = attributes.get('title', 'Not Set')
 
-    # Split the name for the frontend variables
     name = user.get('name', '')
     name_parts = name.split(' ')
     first_name = name_parts[0] if name_parts else ''
     last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
+    email = user.get('email', '')
+    
+    # Check Domain Rules
+    domain_part = email.split('@')[-1] if '@' in email else ''
+    domain_obj = db.query(DomainDB).filter(DomainDB.domain_name == domain_part).first()
+    
+    can_edit = False
+    lock_reason = "Your email domain is not registered in this system."
+    
+    if domain_obj:
+        if not domain_obj.is_active:
+            lock_reason = "Signatures for your domain are currently disabled by the administrator."
+        elif not domain_obj.allow_overrides:
+            lock_reason = "Custom overrides have been disabled for your domain. The master template will be used."
+        else:
+            can_edit = True
+            lock_reason = ""
+    
+    raw_template = domain_obj.template_html if domain_obj else "<p class='text-red-500'>No active domain template found for your email domain.</p>"
+    
+    parsed_template = raw_template.replace("{{ first_name }}", first_name).replace("{{ last_name }}", last_name).replace("{{ title }}", title).replace("{{ phone }}", phone).replace("{{ email }}", email).replace("{{ domain_name }}", domain_part)
 
-    authentik_url = os.environ.get('AUTHENTIK_URL', '')
-    authentik_settings_url = f"{authentik_url}/if/user/#/settings"
-            
     return templates.TemplateResponse("index.html", {
-        "request": request, 
-        "has_logo": has_logo,
-        "has_favicon": has_favicon,
-        "app_name": app_name,
-        "user": user,
-        "is_admin": is_admin,
-        "authentik_settings_url": authentik_settings_url,
-        "phone": phone,
-        "title": title,
-        "first_name": first_name,
-        "last_name": last_name
+        "request": request, "has_logo": has_logo, "has_favicon": has_favicon, "app_name": app_name,
+        "user": user, "is_admin": is_admin, "authentik_settings_url": f"{os.environ.get('AUTHENTIK_URL', '')}/if/user/#/settings",
+        "phone": phone, "title": title, "first_name": first_name, "last_name": last_name,
+        "domain_template": parsed_template, "can_edit": can_edit, "lock_reason": lock_reason
     })
 
-# --- API Endpoints: Domains ---
-
+# --- API Endpoints ---
 @app.get("/domains/")
 def read_domains(db: Session = Depends(get_db)):
     return db.query(DomainDB).all()
@@ -223,10 +208,46 @@ def save_my_signature(req: OverrideUpdate, request: Request, db: Session = Depen
     if not user: raise HTTPException(status_code=401)
     email = user.get('email')
     override = db.query(UserOverrideDB).filter(UserOverrideDB.user_email == email).first()
-    if override:
-        override.html_content = req.html_content
-    else:
-        override = UserOverrideDB(user_email=email, html_content=req.html_content)
-        db.add(override)
+    if override: override.html_content = req.html_content
+    else: db.add(UserOverrideDB(user_email=email, html_content=req.html_content))
     db.commit()
     return {"status": "success"}
+
+@app.delete("/api/my-signature")
+def delete_my_signature(request: Request, db: Session = Depends(get_db)):
+    user = request.session.get('user')
+    if not user: raise HTTPException(status_code=401)
+    
+    email = user.get('email')
+    override = db.query(UserOverrideDB).filter(UserOverrideDB.user_email == email).first()
+    
+    if override:
+        db.delete(override)
+        db.commit()
+        return {"status": "deleted"}
+    return {"status": "not_found"}
+
+# --- ADMIN USER OVERRIDE ENDPOINTS ---
+@app.get("/api/admin/overrides/{domain_name}")
+def get_domain_overrides(domain_name: str, request: Request, db: Session = Depends(get_db)):
+    if not is_admin_user(request): raise HTTPException(status_code=403, detail="Admins only")
+    overrides = db.query(UserOverrideDB).filter(UserOverrideDB.user_email.endswith(f"@{domain_name}")).all()
+    return overrides
+
+@app.post("/api/admin/overrides")
+def save_admin_override(req: AdminOverrideSave, request: Request, db: Session = Depends(get_db)):
+    if not is_admin_user(request): raise HTTPException(status_code=403, detail="Admins only")
+    override = db.query(UserOverrideDB).filter(UserOverrideDB.user_email == req.user_email).first()
+    if override: override.html_content = req.html_content
+    else: db.add(UserOverrideDB(user_email=req.user_email, html_content=req.html_content))
+    db.commit()
+    return {"status": "success"}
+
+@app.delete("/api/admin/overrides/{override_id}")
+def delete_admin_override(override_id: int, request: Request, db: Session = Depends(get_db)):
+    if not is_admin_user(request): raise HTTPException(status_code=403, detail="Admins only")
+    override = db.query(UserOverrideDB).filter(UserOverrideDB.id == override_id).first()
+    if override:
+        db.delete(override)
+        db.commit()
+    return {"status": "deleted"}
