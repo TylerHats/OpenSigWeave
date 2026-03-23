@@ -1,6 +1,6 @@
 import os
 import json
-import httpx  # Added for server-to-server Authentik requests
+import httpx
 import re
 from fastapi import FastAPI, Depends, HTTPException, Request, Header
 from fastapi.responses import RedirectResponse
@@ -29,6 +29,7 @@ class DomainDB(Base):
     domain_name = Column(String, unique=True, index=True)
     is_active = Column(Boolean, default=True)
     allow_overrides = Column(Boolean, default=True)
+    inject_on_replies = Column(Boolean, default=False) # NEW: Lua Script Flag
     template_html = Column(Text, default="<p>Best Regards,</p><p><br></p><p><strong>{{ first_name }} {{ last_name }}</strong></p><p>{{ title }} | {{ domain_name }}</p>")
 
 class UserOverrideDB(Base):
@@ -47,6 +48,7 @@ class DomainCreate(BaseModel):
 class DomainUpdate(BaseModel):
     is_active: bool
     allow_overrides: bool
+    inject_on_replies: bool # NEW
     template_html: str
 
 class OverrideUpdate(BaseModel):
@@ -121,7 +123,7 @@ def read_root(request: Request, db: Session = Depends(get_db)):
     has_favicon = os.path.isfile("branding/favicon.ico")
     
     app_name = "OpenSigWeave"
-    app_color = "#60a5fa" # Default Tailwind blue-400
+    app_color = "#60a5fa"
     
     settings_path = "branding/settings.json"
     if os.path.isfile(settings_path):
@@ -187,6 +189,7 @@ def update_domain(domain_id: int, domain_update: DomainUpdate, db: Session = Dep
     if not db_domain: raise HTTPException(status_code=404)
     db_domain.is_active = domain_update.is_active
     db_domain.allow_overrides = domain_update.allow_overrides
+    db_domain.inject_on_replies = domain_update.inject_on_replies # NEW
     db_domain.template_html = domain_update.template_html
     db.commit()
     return {"status": "success"}
@@ -272,7 +275,7 @@ async def get_rspamd_signature(
     domain_obj = db.query(DomainDB).filter(DomainDB.domain_name == domain_part).first()
     
     if not domain_obj or not domain_obj.is_active:
-        return {"html": ""}
+        return {"html": "", "inject_on_replies": False}
         
     # 2. Check for User Override
     override = db.query(UserOverrideDB).filter(UserOverrideDB.user_email == email).first()
@@ -283,7 +286,7 @@ async def get_rspamd_signature(
         raw_template = domain_obj.template_html
         
     if not raw_template:
-        return {"html": ""}
+        return {"html": "", "inject_on_replies": domain_obj.inject_on_replies}
         
     # 3. Fetch live data from Authentik API
     authentik_url = os.environ.get('AUTHENTIK_URL', '').rstrip('/')
@@ -299,7 +302,6 @@ async def get_rspamd_signature(
         search_url = f"{authentik_url}/api/v3/core/users/?search={email}"
         
         try:
-            # FIX 1: verify=False allows internal homelab API calls to bypass strict SSL
             async with httpx.AsyncClient(verify=False) as client:
                 response = await client.get(search_url, headers=headers, timeout=5.0)
                 if response.status_code == 200:
@@ -315,7 +317,6 @@ async def get_rspamd_signature(
                         
                         attributes = user_data.get('attributes', {})
                         
-                        # FIX 2: Authentik stores custom attributes as lists. Safely extract index [0].
                         title_val = attributes.get('title', [''])
                         phone_val = attributes.get('phone', [''])
                         
@@ -342,4 +343,7 @@ async def get_rspamd_signature(
     parsed = re.sub(r'\{\{\s*domain_name\s*\}\}', domain_part, parsed)
     
     # 5. Deliver to Rspamd
-    return {"html": parsed}
+    return {
+        "html": parsed,
+        "inject_on_replies": domain_obj.inject_on_replies # Lua will read this flag!
+    }
