@@ -6,7 +6,7 @@ local ucl = require "ucl"
 -- OPENSIGWEAVE CONFIGURATION
 -- ==========================================
 local ENGINE_API_KEY = "your_super_secret_rspamd_key"
-local API_URL_BASE = "https://signature.hatsthings.com/api/signature/"
+local API_URL_BASE = "https://proxied.url/api/signature/"
 
 -- ==========================================
 -- THE REPLY CHAIN DICTIONARY
