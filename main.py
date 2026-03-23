@@ -16,52 +16,40 @@ from authlib.integrations.starlette_client import OAuth
 
 load_dotenv() # Loads the .env file we just made
 
-# 1. Database Setup
+# 2. Database Setup
 SQLALCHEMY_DATABASE_URL = "sqlite:///./opensigweave.db"
-# check_same_thread is needed for SQLite in FastAPI
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# 2. Database Models (The Schema we discussed)
-class Domain(Base):
+class DomainDB(Base):
     __tablename__ = "domains"
-
     id = Column(Integer, primary_key=True, index=True)
-    domain_name = Column(String, unique=True, index=True, nullable=False)
-    html_template = Column(Text, nullable=True)
-    plain_template = Column(Text, nullable=True)
+    domain_name = Column(String, unique=True, index=True)
     is_active = Column(Boolean, default=True)
+    allow_overrides = Column(Boolean, default=True) # New Setting
+    template_html = Column(Text, default="<p>Best Regards,</p><p><br></p><p><strong>{{ first_name }} {{ last_name }}</strong></p><p>{{ title }} | {{ domain_name }}</p>") # New Template
 
-class UserOverride(Base):
+class UserOverrideDB(Base):
     __tablename__ = "user_overrides"
-
     id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True, nullable=False)
-    domain_id = Column(Integer, ForeignKey("domains.id"), nullable=False)
-    html_override = Column(Text, nullable=True)
-    plain_override = Column(Text, nullable=True)
-    is_locked = Column(Boolean, default=False)
+    user_email = Column(String, unique=True, index=True)
+    html_content = Column(Text, default="")
 
-# --- Pydantic Schemas (Data Validation) ---
+Base.metadata.create_all(bind=engine)
 
-class DomainBase(BaseModel):
+# Pydantic Models for API
+class DomainCreate(BaseModel):
     domain_name: str
-    html_template: Optional[str] = None
-    plain_template: Optional[str] = None
     is_active: bool = True
 
-class DomainCreate(DomainBase):
-    pass
+class DomainUpdate(BaseModel):
+    is_active: bool
+    allow_overrides: bool
+    template_html: str
 
-class DomainResponse(DomainBase):
-    id: int
-
-    class Config:
-        from_attributes = True
-
-# Create the tables in the database
-Base.metadata.create_all(bind=engine)
+class OverrideUpdate(BaseModel):
+    html_content: str
 
 # 3. FastAPI App Initialization
 app = FastAPI(
@@ -83,7 +71,7 @@ oauth.register(
     client_id=os.environ.get('CLIENT_ID'),
     client_secret=os.environ.get('CLIENT_SECRET'),
     client_kwargs={
-        'scope': 'openid email profile'
+        'scope': 'openid email profile attributes'
     }
 )
 
@@ -123,10 +111,12 @@ async def logout(request: Request):
     # 1. Clear the local OpenSigWeave session
     request.session.pop('user', None)
     
-    # 2. Redirect to Authentik to kill the master session
+    # 2. Redirect to Authentik to kill the master session AND tell it where to return
     authentik_url = os.environ.get('AUTHENTIK_URL')
     slug = os.environ.get('AUTHENTIK_SLUG')
-    end_session_url = f"{authentik_url}/application/o/{slug}/end-session/"
+    return_url = str(request.url_for('read_root')).replace('http://', 'https://')
+    
+    end_session_url = f"{authentik_url}/application/o/{slug}/end-session/?post_logout_redirect_uri={return_url}"
     
     return RedirectResponse(url=end_session_url)
 
@@ -160,39 +150,83 @@ def read_root(request: Request):
         except Exception:
             pass
             
+    # Ensure user has attributes dictionary, then extract phone and title safely
+    attributes = user.get('attributes', {}) if user else {}
+    phone = attributes.get('phone', 'Not Set')
+    title = attributes.get('title', 'Not Set')
+
+    # Split the name for the frontend variables
+    name = user.get('name', '')
+    name_parts = name.split(' ')
+    first_name = name_parts[0] if name_parts else ''
+    last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
+
+    authentik_url = os.environ.get('AUTHENTIK_URL', '')
+    authentik_settings_url = f"{authentik_url}/if/user/#/settings"
+            
     return templates.TemplateResponse("index.html", {
         "request": request, 
         "has_logo": has_logo,
         "has_favicon": has_favicon,
         "app_name": app_name,
         "user": user,
-        "is_admin": is_admin
+        "is_admin": is_admin,
+        "authentik_settings_url": authentik_settings_url,
+        "phone": phone,
+        "title": title,
+        "first_name": first_name,
+        "last_name": last_name
     })
 
 # --- API Endpoints: Domains ---
 
-@app.post("/domains/", response_model=DomainResponse)
+@app.get("/domains/")
+def read_domains(db: Session = Depends(get_db)):
+    return db.query(DomainDB).all()
+
+@app.post("/domains/")
 def create_domain(domain: DomainCreate, db: Session = Depends(get_db)):
-    # Check if domain already exists
-    db_domain = db.query(Domain).filter(Domain.domain_name == domain.domain_name).first()
-    if db_domain:
-        raise HTTPException(status_code=400, detail="Domain already registered")
-    
-    # Create and save the new domain
-    new_domain = Domain(**domain.model_dump())
-    db.add(new_domain)
+    db_domain = DomainDB(domain_name=domain.domain_name, is_active=domain.is_active)
+    db.add(db_domain)
     db.commit()
-    db.refresh(new_domain)
-    return new_domain
+    db.refresh(db_domain)
+    return db_domain
 
-@app.get("/domains/", response_model=List[DomainResponse])
-def get_domains(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    domains = db.query(Domain).offset(skip).limit(limit).all()
-    return domains
+@app.put("/domains/{domain_id}")
+def update_domain(domain_id: int, domain_update: DomainUpdate, db: Session = Depends(get_db)):
+    db_domain = db.query(DomainDB).filter(DomainDB.id == domain_id).first()
+    if not db_domain: raise HTTPException(status_code=404)
+    db_domain.is_active = domain_update.is_active
+    db_domain.allow_overrides = domain_update.allow_overrides
+    db_domain.template_html = domain_update.template_html
+    db.commit()
+    return {"status": "success"}
 
-@app.get("/domains/{domain_id}", response_model=DomainResponse)
-def get_domain(domain_id: int, db: Session = Depends(get_db)):
-    domain = db.query(Domain).filter(Domain.id == domain_id).first()
-    if domain is None:
-        raise HTTPException(status_code=404, detail="Domain not found")
-    return domain
+@app.delete("/domains/{domain_id}")
+def delete_domain(domain_id: int, db: Session = Depends(get_db)):
+    db_domain = db.query(DomainDB).filter(DomainDB.id == domain_id).first()
+    if db_domain:
+        db.delete(db_domain)
+        db.commit()
+    return {"status": "deleted"}
+
+@app.get("/api/my-signature")
+def get_my_signature(request: Request, db: Session = Depends(get_db)):
+    user = request.session.get('user')
+    if not user: raise HTTPException(status_code=401)
+    override = db.query(UserOverrideDB).filter(UserOverrideDB.user_email == user.get('email')).first()
+    return {"html_content": override.html_content if override else ""}
+
+@app.post("/api/my-signature")
+def save_my_signature(req: OverrideUpdate, request: Request, db: Session = Depends(get_db)):
+    user = request.session.get('user')
+    if not user: raise HTTPException(status_code=401)
+    email = user.get('email')
+    override = db.query(UserOverrideDB).filter(UserOverrideDB.user_email == email).first()
+    if override:
+        override.html_content = req.html_content
+    else:
+        override = UserOverrideDB(user_email=email, html_content=req.html_content)
+        db.add(override)
+    db.commit()
+    return {"status": "success"}
