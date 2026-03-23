@@ -1,5 +1,6 @@
 import os
 import json
+import httpx  # Added for server-to-server Authentik requests
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -55,7 +56,7 @@ class AdminOverrideSave(BaseModel):
     html_content: str
 
 # 3. FastAPI App Initialization
-app = FastAPI(title="OpenSigWeave API", version="0.1.0", docs_url=None, redoc_url=None, openapi_url=None)
+app = FastAPI(title="OpenSigWeave API", version="1.0.0", docs_url=None, redoc_url=None, openapi_url=None)
 app.add_middleware(SessionMiddleware, secret_key=os.environ.get("SECRET_KEY", "fallback-secret"))
 
 oauth = OAuth()
@@ -119,12 +120,15 @@ def read_root(request: Request, db: Session = Depends(get_db)):
     has_favicon = os.path.isfile("branding/favicon.ico")
     
     app_name = "OpenSigWeave"
+    app_color = "#60a5fa" # Default Tailwind blue-400
+    
     settings_path = "branding/settings.json"
     if os.path.isfile(settings_path):
         try:
             with open(settings_path, "r") as f:
                 settings = json.load(f)
                 if "app_name" in settings: app_name = settings["app_name"]
+                if "app_color" in settings: app_color = settings["app_color"]
         except Exception: pass
             
     attributes = user.get('attributes', {}) if user else {}
@@ -137,7 +141,6 @@ def read_root(request: Request, db: Session = Depends(get_db)):
     last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
     email = user.get('email', '')
     
-    # Check Domain Rules
     domain_part = email.split('@')[-1] if '@' in email else ''
     domain_obj = db.query(DomainDB).filter(DomainDB.domain_name == domain_part).first()
     
@@ -158,7 +161,7 @@ def read_root(request: Request, db: Session = Depends(get_db)):
     parsed_template = raw_template.replace("{{ first_name }}", first_name).replace("{{ last_name }}", last_name).replace("{{ title }}", title).replace("{{ phone }}", phone).replace("{{ email }}", email).replace("{{ domain_name }}", domain_part)
 
     return templates.TemplateResponse("index.html", {
-        "request": request, "has_logo": has_logo, "has_favicon": has_favicon, "app_name": app_name,
+        "request": request, "has_logo": has_logo, "has_favicon": has_favicon, "app_name": app_name, "app_color": app_color,
         "user": user, "is_admin": is_admin, "authentik_settings_url": f"{os.environ.get('AUTHENTIK_URL', '')}/if/user/#/settings",
         "phone": phone, "title": title, "first_name": first_name, "last_name": last_name,
         "domain_template": parsed_template, "can_edit": can_edit, "lock_reason": lock_reason
@@ -217,17 +220,14 @@ def save_my_signature(req: OverrideUpdate, request: Request, db: Session = Depen
 def delete_my_signature(request: Request, db: Session = Depends(get_db)):
     user = request.session.get('user')
     if not user: raise HTTPException(status_code=401)
-    
     email = user.get('email')
     override = db.query(UserOverrideDB).filter(UserOverrideDB.user_email == email).first()
-    
     if override:
         db.delete(override)
         db.commit()
         return {"status": "deleted"}
     return {"status": "not_found"}
 
-# --- ADMIN USER OVERRIDE ENDPOINTS ---
 @app.get("/api/admin/overrides/{domain_name}")
 def get_domain_overrides(domain_name: str, request: Request, db: Session = Depends(get_db)):
     if not is_admin_user(request): raise HTTPException(status_code=403, detail="Admins only")
@@ -251,3 +251,71 @@ def delete_admin_override(override_id: int, request: Request, db: Session = Depe
         db.delete(override)
         db.commit()
     return {"status": "deleted"}
+
+# ==========================================
+# THE RSPAMD COMPILATION ENGINE
+# ==========================================
+@app.get("/api/signature/{email}")
+async def get_rspamd_signature(email: str, db: Session = Depends(get_db)):
+    # 1. Look up Domain Rules
+    domain_part = email.split('@')[-1] if '@' in email else ''
+    domain_obj = db.query(DomainDB).filter(DomainDB.domain_name == domain_part).first()
+    
+    # If domain doesn't exist or is disabled, return nothing to Rspamd
+    if not domain_obj or not domain_obj.is_active:
+        return {"html": ""}
+        
+    # 2. Check for User Override
+    override = db.query(UserOverrideDB).filter(UserOverrideDB.user_email == email).first()
+    
+    if override and domain_obj.allow_overrides:
+        raw_template = override.html_content
+    else:
+        raw_template = domain_obj.template_html
+        
+    if not raw_template:
+        return {"html": ""}
+        
+    # 3. Fetch live data from Authentik API
+    authentik_url = os.environ.get('AUTHENTIK_URL')
+    api_token = os.environ.get('AUTHENTIK_API_TOKEN')
+    
+    first_name, last_name, title, phone = "", "", "", ""
+    
+    if authentik_url and api_token:
+        headers = {
+            "Authorization": f"Bearer {api_token}",
+            "Accept": "application/json"
+        }
+        search_url = f"{authentik_url}/api/v3/core/users/?search={email}"
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(search_url, headers=headers, timeout=5.0)
+                if response.status_code == 200:
+                    data = response.json()
+                    results = data.get('results', [])
+                    
+                    if results:
+                        user_data = results[0]
+                        name = user_data.get('name', '')
+                        name_parts = name.split(' ')
+                        first_name = name_parts[0] if name_parts else ''
+                        last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
+                        
+                        attributes = user_data.get('attributes', {})
+                        title = attributes.get('title', '')
+                        phone = attributes.get('phone', '')
+        except Exception as e:
+            print(f"Server-to-Server Authentik API Request failed for {email}: {e}")
+            
+    # 4. Compile the final HTML string
+    parsed = raw_template.replace("{{ first_name }}", first_name)
+    parsed = parsed.replace("{{ last_name }}", last_name)
+    parsed = parsed.replace("{{ title }}", title)
+    parsed = parsed.replace("{{ phone }}", phone)
+    parsed = parsed.replace("{{ email }}", email)
+    parsed = parsed.replace("{{ domain_name }}", domain_part)
+    
+    # 5. Deliver to Rspamd
+    return {"html": parsed}

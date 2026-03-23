@@ -3,4 +3,6 @@ venv/
 *.sqlite
 .env
 __pycache__/
-branding/
+branding/logo.png
+branding/favicon.ico
+branding/settings.json
