@@ -23,11 +23,12 @@ OpenSigWeave is a FastAPI application that utilizes an SQLite database.
 * Python 3.10+
 * An active Authentik deployment
 * An active Rspamd/Mailcow deployment
+* A Reverse Proxy (Nginx, Traefik, Caddy, etc.) for SSL termination
 
 ### Installation
 1. Clone the repository to your application server.
    ```bash
-   git clone [https://github.com/yourusername/opensigweave.git](https://github.com/yourusername/opensigweave.git)
+   git clone https://github.com/yourusername/opensigweave.git
    cd opensigweave
    ```
 2. Install the required Python modules.
@@ -44,15 +45,77 @@ OpenSigWeave is a FastAPI application that utilizes an SQLite database.
    cp branding/logo.example.png branding/logo.png
    cp branding/settings.example.json branding/settings.json
    ```
-5. Start the application (Recommendation: set this up as a `systemd` service for persistence).
+5. Start the application. (See Step 6 for running as a permanent service).
    ```bash
    uvicorn main:app --host 0.0.0.0 --port 8000
    ```
+
+### 6. Running as a Systemd Service (Recommended)
+To keep OpenSigWeave running permanently and ensure it starts automatically on server reboots, create a systemd service.
+
+1. Create a new service file:
+   ```bash
+   sudo nano /etc/systemd/system/opensigweave.service
+   ```
+
+2. Paste the following configuration. *(Note: Adjust the `WorkingDirectory` and `Environment` paths if you cloned the repository to a different location, and ensure the port matches your reverse proxy setup).*
+
+   ```ini
+   [Unit]
+   Description=OpenSigWeave FastAPI Backend
+   After=network.target
+
+   [Service]
+   User=root
+   Group=root
+   WorkingDirectory=/etc/OpenSigWeave
+   Environment="PATH=/etc/OpenSigWeave/venv/bin"
+   # The proxy-headers flag ensures IPs are read correctly behind a reverse proxy
+   ExecStart=/etc/OpenSigWeave/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8085 --proxy-headers --forwarded-allow-ips="*"
+   Restart=always
+   RestartSec=3
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+3. Enable and start the service:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable opensigweave
+   sudo systemctl start opensigweave
+   ```
+
+### 7. Reverse Proxy & SSL Configuration
+OpenSigWeave does not handle SSL termination natively. It runs as a plain HTTP FastAPI application and **must** be placed behind a reverse proxy to secure the SSO callbacks and administrative sessions via HTTPS.
+
+Here is a standard configuration example for **Nginx**:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name signature.yourdomain.com;
+
+    # SSL Certificates (Managed by Certbot, etc.)
+    ssl_certificate /etc/letsencrypt/live/signature.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/signature.yourdomain.com/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8085;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
 
 ### Authentik Setup
 You will need two configurations in Authentik:
 1. **OIDC Provider:** Create a standard OIDC Application/Provider for user logins. Ensure the scopes include `openid`, `email`, and `profile`.
 2. **Service Account API Token:** Create an App Token (Intent: **API Token**) bound to an administrative account. This is required for the Rspamd engine to query user attributes securely in the background.
+
+**Note on SSO Compatibility:** OpenSigWeave was built and tested specifically for **Authentik** and **Mailcow**. While the OIDC web login is standard and adaptable, the backend signature engine strictly relies on Authentik's REST API (`/api/v3/core/users/`) to poll live user attributes during mail transit. Adapting this for Authelia, Keycloak, or Entra ID will require modifying the API request logic inside the `get_rspamd_signature` route in `main.py`.
 
 ---
 
@@ -87,6 +150,3 @@ The web app is only half the puzzle. To actually inject signatures, you must dep
 ## 🔒 Security Notes
 * OpenSigWeave's API endpoint (`/api/signature/{email}`) exposes employee metadata (Phone, Title, etc.) to successfully compile signatures. 
 * This endpoint is strictly protected by the `X-Engine-Key` header. Ensure your `ENGINE_API_KEY` is a long, cryptographically secure string, and never expose it to frontend clients.
-
-## ❓ Other Notes
-* **OpenSigWeave** was built and tested specifically for **Authentik** and **Mailcow**. While the OIDC web login is standard and adaptable, the backend signature engine strictly relies on Authentik's REST API (`/api/v3/core/users/`) to poll live user attributes during mail transit. Adapting this for Authelia, Keycloak, or Entra ID will require modifying the API request logic inside the `get_rspamd_signature` route in `main.py` among other things.
