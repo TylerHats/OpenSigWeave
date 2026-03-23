@@ -10,8 +10,24 @@ Instead of forcing users to configure signatures in their individual mail client
 * **Rich Visual Editor:** A custom UI built with Tailwind CSS, Alpine.js, and Quill.js allows users and admins to design signatures visually or via raw HTML.
 * **Domain-Level Master Templates:** Enforce a corporate signature standard across an entire domain.
 * **User Overrides:** Allow specific users to customize their signatures, or administratively lock them out.
-* **Intelligent Reply-Chain Detection:** An experimental Lua engine detects when an email is a reply and cleanly injects the signature *above* the quoted history (Supports Outlook, Apple Mail, Gmail, Thunderbird, etc.).
+* **Intelligent Reply-Chain Detection:** An experimental Lua engine detects when an email is a reply and cleanly injects the signature *above* the quoted history.
 * **The "Kill Switch":** Easily disable signatures entirely for specific service accounts (e.g., `noreply@` or `billing@`).
+
+---
+
+## 📧 Supported Mail Clients (Reply Injection)
+New, outbound emails are universally supported across all clients. 
+
+However, because there is no universal web standard for how email clients format reply chains, OpenSigWeave's **Experimental Reply Injection** uses specific Regex patterns to find the exact HTML line where the "quoted history" begins. 
+
+The Lua engine officially supports injecting signatures into replies sent from the following clients:
+* **Microsoft Outlook:** Classic Desktop, New Desktop, OWA (Web), and iOS/Android Mobile Apps.
+* **Apple Mail:** iOS, iPadOS, and macOS native mail apps.
+* **Gmail:** iOS and Android Mobile Apps.
+* **Thunderbird:** Desktop and Mobile.
+* **Self-Hosted Webmail:** Roundcube, SOGo (Mailcow default), and Nextcloud Mail.
+
+*Note: If a user sends a reply from an unrecognized client, the Lua engine acts defensively. It will safely abort the injection rather than risk placing the signature in the middle of a sentence.*
 
 ---
 
