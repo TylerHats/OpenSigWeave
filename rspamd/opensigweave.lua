@@ -81,7 +81,7 @@ local function inject_signature(task)
             return
         end
 
-        local plain_sig = html_sig:gsub("<br.->", "\n"):gsub("<p.->", "\n"):gsub("<[^>]+>", ""):gsub("&nbsp;", " ")
+        local plain_sig = html_sig:gsub("<br.->", "\n"):gsub("<p.->", "\n"):gsub("<li.->", "\n- "):gsub("<[^>]+>", ""):gsub("&nbsp;", " ")
 
         local injected_inline = false
         local modified_raw_body = tostring(task:get_rawbody() or "")

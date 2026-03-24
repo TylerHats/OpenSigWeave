@@ -30,8 +30,8 @@ class DomainDB(Base):
     is_active = Column(Boolean, default=True)
     allow_overrides = Column(Boolean, default=True)
     inject_on_replies = Column(Boolean, default=False)
-    trim_whitespace = Column(Boolean, default=True) # NEW
-    strip_device_signatures = Column(Boolean, default=False) # NEW
+    trim_whitespace = Column(Boolean, default=True)
+    strip_device_signatures = Column(Boolean, default=False)
     template_html = Column(Text, default="<p>Best Regards,</p><p><br></p><p><strong>{{ first_name }} {{ last_name }}</strong></p><p>{{ title }} | {{ domain_name }}</p>")
 
 class UserOverrideDB(Base):
@@ -52,8 +52,8 @@ class DomainUpdate(BaseModel):
     is_active: bool
     allow_overrides: bool
     inject_on_replies: bool
-    trim_whitespace: bool # NEW
-    strip_device_signatures: bool # NEW
+    trim_whitespace: bool
+    strip_device_signatures: bool
     template_html: str
 
 class OverrideUpdate(BaseModel):
@@ -199,8 +199,8 @@ def update_domain(domain_id: int, domain_update: DomainUpdate, db: Session = Dep
     db_domain.is_active = domain_update.is_active
     db_domain.allow_overrides = domain_update.allow_overrides
     db_domain.inject_on_replies = domain_update.inject_on_replies
-    db_domain.trim_whitespace = domain_update.trim_whitespace # NEW
-    db_domain.strip_device_signatures = domain_update.strip_device_signatures # NEW
+    db_domain.trim_whitespace = domain_update.trim_whitespace
+    db_domain.strip_device_signatures = domain_update.strip_device_signatures
     db_domain.template_html = domain_update.template_html
     db.commit()
     return {"status": "success"}
