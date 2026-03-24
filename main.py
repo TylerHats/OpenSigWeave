@@ -30,6 +30,8 @@ class DomainDB(Base):
     is_active = Column(Boolean, default=True)
     allow_overrides = Column(Boolean, default=True)
     inject_on_replies = Column(Boolean, default=False)
+    trim_whitespace = Column(Boolean, default=True) # NEW
+    strip_device_signatures = Column(Boolean, default=False) # NEW
     template_html = Column(Text, default="<p>Best Regards,</p><p><br></p><p><strong>{{ first_name }} {{ last_name }}</strong></p><p>{{ title }} | {{ domain_name }}</p>")
 
 class UserOverrideDB(Base):
@@ -37,7 +39,7 @@ class UserOverrideDB(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_email = Column(String, unique=True, index=True)
     html_content = Column(Text, default="")
-    is_disabled = Column(Boolean, default=False) # NEW: The Kill Switch
+    is_disabled = Column(Boolean, default=False)
 
 Base.metadata.create_all(bind=engine)
 
@@ -50,6 +52,8 @@ class DomainUpdate(BaseModel):
     is_active: bool
     allow_overrides: bool
     inject_on_replies: bool
+    trim_whitespace: bool # NEW
+    strip_device_signatures: bool # NEW
     template_html: str
 
 class OverrideUpdate(BaseModel):
@@ -58,7 +62,7 @@ class OverrideUpdate(BaseModel):
 class AdminOverrideSave(BaseModel):
     user_email: str
     html_content: str
-    is_disabled: bool = False # NEW
+    is_disabled: bool = False
 
 # 3. FastAPI App Initialization
 app = FastAPI(title="OpenSigWeave API", version="1.0.0", docs_url=None, redoc_url=None, openapi_url=None)
@@ -195,6 +199,8 @@ def update_domain(domain_id: int, domain_update: DomainUpdate, db: Session = Dep
     db_domain.is_active = domain_update.is_active
     db_domain.allow_overrides = domain_update.allow_overrides
     db_domain.inject_on_replies = domain_update.inject_on_replies
+    db_domain.trim_whitespace = domain_update.trim_whitespace # NEW
+    db_domain.strip_device_signatures = domain_update.strip_device_signatures # NEW
     db_domain.template_html = domain_update.template_html
     db.commit()
     return {"status": "success"}
@@ -283,14 +289,13 @@ async def get_rspamd_signature(
     domain_obj = db.query(DomainDB).filter(DomainDB.domain_name == domain_part).first()
     
     if not domain_obj or not domain_obj.is_active:
-        return {"html": "", "inject_on_replies": False}
+        return {"html": "", "inject_on_replies": False, "trim_whitespace": True, "strip_device_signatures": False}
         
     # 2. Check for User Override AND KILL SWITCH
     override = db.query(UserOverrideDB).filter(UserOverrideDB.user_email == email).first()
     
-    # NEW: If the admin explicitly disabled this user, return nothing immediately.
     if override and override.is_disabled:
-        return {"html": "", "inject_on_replies": False}
+        return {"html": "", "inject_on_replies": False, "trim_whitespace": True, "strip_device_signatures": False}
     
     if override:
         raw_template = override.html_content
@@ -298,7 +303,12 @@ async def get_rspamd_signature(
         raw_template = domain_obj.template_html
         
     if not raw_template:
-        return {"html": "", "inject_on_replies": domain_obj.inject_on_replies}
+        return {
+            "html": "", 
+            "inject_on_replies": domain_obj.inject_on_replies,
+            "trim_whitespace": domain_obj.trim_whitespace,
+            "strip_device_signatures": domain_obj.strip_device_signatures
+        }
         
     # 3. Fetch live data from Authentik API
     authentik_url = os.environ.get('AUTHENTIK_URL', '').rstrip('/')
@@ -356,5 +366,7 @@ async def get_rspamd_signature(
     # 5. Deliver to Rspamd
     return {
         "html": parsed,
-        "inject_on_replies": domain_obj.inject_on_replies
+        "inject_on_replies": domain_obj.inject_on_replies,
+        "trim_whitespace": domain_obj.trim_whitespace,
+        "strip_device_signatures": domain_obj.strip_device_signatures
     }

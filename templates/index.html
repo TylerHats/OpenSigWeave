@@ -163,9 +163,19 @@
                                 <div class="ml-3 text-sm font-medium text-gray-300">Allow Users to Override Signature</div>
                             </label>
 
-                            <label class="flex items-center cursor-pointer">
+                            <label class="flex items-center cursor-pointer mb-4">
                                 <div class="relative"><input type="checkbox" class="sr-only" x-model="injectOnReplies"><div class="block bg-gray-700 w-10 h-6 rounded-full"></div><div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform" :class="injectOnReplies ? 'translate-x-4 bg-purple-500' : ''"></div></div>
                                 <div class="ml-3 text-sm font-medium text-gray-300">Enable Experimental Reply Injection <span class="text-gray-500 text-xs ml-2">(Applies signatures to email replies)</span></div>
+                            </label>
+
+                            <label class="flex items-center cursor-pointer mb-4">
+                                <div class="relative"><input type="checkbox" class="sr-only" x-model="trimWhitespace"><div class="block bg-gray-700 w-10 h-6 rounded-full"></div><div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform" :class="trimWhitespace ? 'translate-x-4 bg-green-500' : ''"></div></div>
+                                <div class="ml-3 text-sm font-medium text-gray-300">Trim Extra Whitespace <span class="text-gray-500 text-xs ml-2">(Peels empty trailing lines before injecting)</span></div>
+                            </label>
+
+                            <label class="flex items-center cursor-pointer">
+                                <div class="relative"><input type="checkbox" class="sr-only" x-model="stripDeviceSignatures"><div class="block bg-gray-700 w-10 h-6 rounded-full"></div><div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform" :class="stripDeviceSignatures ? 'translate-x-4 bg-red-500' : ''"></div></div>
+                                <div class="ml-3 text-sm font-medium text-gray-300">Strip Mobile Device Signatures <span class="text-gray-500 text-xs ml-2">(Removes "Sent from my iPhone", etc.)</span></div>
                             </label>
                         </div>
 
@@ -232,7 +242,7 @@
                 </div>
 
                 <div x-show="modalTab === 'settings'" class="bg-gray-900 px-6 py-4 flex flex-row-reverse border-t border-gray-700">
-                    <button @click="$dispatch('save-domain-settings', {domain: domain, allowOverrides: allowOverrides, injectOnReplies: injectOnReplies, html: domainQuill.root.innerHTML}); show = false;" class="ml-3 px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-500 text-sm font-medium transition">Save Settings</button>
+                    <button @click="$dispatch('save-domain-settings', {domain: domain, allowOverrides: allowOverrides, injectOnReplies: injectOnReplies, trimWhitespace: trimWhitespace, stripDeviceSignatures: stripDeviceSignatures, html: domainQuill.root.innerHTML}); show = false;" class="ml-3 px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-500 text-sm font-medium transition">Save Settings</button>
                     <button @click="show = false" class="px-4 py-2 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 text-sm font-medium transition">Close</button>
                 </div>
                 <div x-show="modalTab === 'users'" class="bg-gray-900 px-6 py-4 flex flex-row-reverse border-t border-gray-700">
@@ -280,9 +290,9 @@
 
         function domainSettingsModal() {
             return {
-                show: false, domain: null, allowOverrides: true, injectOnReplies: false, modalTab: 'settings', userOverrides: [], newOverrideEmail: '', editingUserEmail: '', editingUserDisabled: false,
+                show: false, domain: null, allowOverrides: true, injectOnReplies: false, trimWhitespace: true, stripDeviceSignatures: false, modalTab: 'settings', userOverrides: [], newOverrideEmail: '', editingUserEmail: '', editingUserDisabled: false,
                 open(domainData) {
-                    this.show = true; this.domain = domainData; this.allowOverrides = domainData.allow_overrides; this.injectOnReplies = domainData.inject_on_replies; this.modalTab = 'settings'; this.editingUserEmail = '';
+                    this.show = true; this.domain = domainData; this.allowOverrides = domainData.allow_overrides; this.injectOnReplies = domainData.inject_on_replies; this.trimWhitespace = domainData.trim_whitespace; this.stripDeviceSignatures = domainData.strip_device_signatures; this.modalTab = 'settings'; this.editingUserEmail = '';
                     setTimeout(() => { domainQuill.root.innerHTML = domainData.template_html; document.getElementById('domain-raw-html-editor').value = domainData.template_html; }, 50);
                     if(!adminQuill) adminQuill = new Quill('#admin-quill-editor', { theme: 'snow', modules: { toolbar: [['bold', 'italic', 'underline'], [{ 'color': [] }, { 'background': [] }], ['link', 'image'], ['clean']] }});
                 },
@@ -315,14 +325,14 @@
             if (res.ok) { notify("Domain registered!"); window.dispatchEvent(new CustomEvent('domain-updated')); } else notify("Failed.", "error");
         });
         window.addEventListener('save-domain-settings', async (e) => {
-            const res = await fetch(`/domains/${e.detail.domain.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_active: e.detail.domain.is_active, allow_overrides: e.detail.allowOverrides, inject_on_replies: e.detail.injectOnReplies, template_html: e.detail.html }) });
+            const res = await fetch(`/domains/${e.detail.domain.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_active: e.detail.domain.is_active, allow_overrides: e.detail.allowOverrides, inject_on_replies: e.detail.injectOnReplies, trim_whitespace: e.detail.trimWhitespace, strip_device_signatures: e.detail.stripDeviceSignatures, template_html: e.detail.html }) });
             if (res.ok) { notify("Settings saved!"); window.dispatchEvent(new CustomEvent('domain-updated')); }
         });
         
         window.addEventListener('confirm-action', async (e) => {
             const { domain, action, targetId } = e.detail;
             if (action === 'toggle') {
-                const res = await fetch(`/domains/${domain.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_active: !domain.is_active, allow_overrides: domain.allow_overrides, inject_on_replies: domain.inject_on_replies, template_html: domain.template_html }) });
+                const res = await fetch(`/domains/${domain.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_active: !domain.is_active, allow_overrides: domain.allow_overrides, inject_on_replies: domain.inject_on_replies, trim_whitespace: domain.trim_whitespace, strip_device_signatures: domain.strip_device_signatures, template_html: domain.template_html }) });
                 if (res.ok) { notify("Status updated."); window.dispatchEvent(new CustomEvent('domain-updated')); window.location.reload(); }
             } else if (action === 'delete') {
                 const res = await fetch(`/domains/${domain.id}`, { method: 'DELETE' });
