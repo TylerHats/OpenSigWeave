@@ -11,6 +11,8 @@ Instead of forcing users to configure signatures in their individual mail client
 * **Domain-Level Master Templates:** Enforce a corporate signature standard across an entire domain.
 * **User Overrides:** Allow specific users to customize their signatures, or administratively lock them out.
 * **Intelligent Reply-Chain Detection:** An experimental Lua engine detects when an email is a reply and cleanly injects the signature *above* the quoted history.
+* **Whitespace Normalization (The "Peeler"):** Aggressively strips rogue HTML spaces, empty paragraphs, and quoted-printable soft-breaks from user emails to ensure perfectly crisp spacing around injected signatures.
+* **Mobile Signature Assassin:** Automatically detects and strips default mobile sign-offs (e.g., "Sent from my iPhone" or "Get Outlook for iOS") before applying the professional corporate signature.
 * **The "Kill Switch":** Easily disable signatures entirely for specific service accounts (e.g., `noreply@` or `billing@`).
 
 ---
@@ -20,14 +22,15 @@ New, outbound emails are universally supported across all clients.
 
 However, because there is no universal web standard for how email clients format reply chains, OpenSigWeave's **Experimental Reply Injection** uses specific Regex patterns to find the exact HTML line where the "quoted history" begins. 
 
-The Lua engine officially supports injecting signatures into replies sent from the following clients:
+The Lua engine officially supports injecting signatures cleanly into replies sent from the following clients:
 * **Microsoft Outlook:** Classic Desktop, New Desktop, OWA (Web), and iOS/Android Mobile Apps.
 * **Apple Mail:** iOS, iPadOS, and macOS native mail apps.
-* **Gmail:** iOS and Android Mobile Apps.
+* **Gmail:** Web, iOS, and Android Mobile Apps.
 * **Thunderbird:** Desktop and Mobile.
-* **Self-Hosted Webmail:** Roundcube, SOGo (Mailcow default), and Nextcloud Mail.
+* **Yahoo Mail & Open-Xchange:** Web clients.
+* **Self-Hosted Webmail:** Horde, Roundcube, SOGo (Mailcow default), and Nextcloud Mail.
 
-*Note: If a user sends a reply from an unrecognized client, the Lua engine acts defensively. It will safely abort the injection rather than risk placing the signature in the middle of a sentence.*
+*Note: If a user sends a reply from an unrecognized client, the Lua engine acts defensively. It will safely abort the inline injection and append the signature to the absolute bottom of the email rather than risk placing it in the middle of a sentence.*
 
 ---
 
@@ -44,29 +47,34 @@ OpenSigWeave is a FastAPI application that utilizes an SQLite database.
 ### Installation
 1. Clone the repository to your application server.
    ```bash
-   git clone https://github.com/yourusername/opensigweave.git
+   git clone [https://github.com/yourusername/opensigweave.git](https://github.com/yourusername/opensigweave.git)
    cd opensigweave
    ```
-2. Install the required Python modules.
+2. Create and activate a Python virtual environment.
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+3. Install the required Python modules.
    ```bash
    pip install -r requirements.txt
    ```
-3. Prepare your environment variables.
+4. Prepare your environment variables.
    ```bash
    cp .env.example .env
    nano .env
    ```
-4. Prepare your branding (Optional).
+5. Prepare your branding (Optional).
    ```bash
    cp branding/logo.example.png branding/logo.png
    cp branding/settings.example.json branding/settings.json
    ```
-5. Start the application. (See Step 6 for running as a permanent service).
+6. Start the application to verify it works. (See Step 7 for running as a permanent service).
    ```bash
-   uvicorn main:app --host 0.0.0.0 --port 8000
+   uvicorn main:app --host 0.0.0.0 --port 8085
    ```
 
-### 6. Running as a Systemd Service (Recommended)
+### 7. Running as a Systemd Service (Recommended)
 To keep OpenSigWeave running permanently and ensure it starts automatically on server reboots, create a systemd service.
 
 1. Create a new service file:
@@ -74,7 +82,7 @@ To keep OpenSigWeave running permanently and ensure it starts automatically on s
    sudo nano /etc/systemd/system/opensigweave.service
    ```
 
-2. Paste the following configuration. *(Note: Adjust the `WorkingDirectory` and `Environment` paths if you cloned the repository to a different location, and ensure the port matches your reverse proxy setup).*
+2. Paste the following configuration. *(Note: Adjust the `WorkingDirectory` and `Environment` paths if you cloned the repository to a location other than `/etc/OpenSigWeave`).*
 
    ```ini
    [Unit]
@@ -102,7 +110,7 @@ To keep OpenSigWeave running permanently and ensure it starts automatically on s
    sudo systemctl start opensigweave
    ```
 
-### 7. Reverse Proxy & SSL Configuration
+### 8. Reverse Proxy & SSL Configuration
 OpenSigWeave does not handle SSL termination natively. It runs as a plain HTTP FastAPI application and **must** be placed behind a reverse proxy to secure the SSO callbacks and administrative sessions via HTTPS.
 
 Here is a standard configuration example for **Nginx**:
@@ -113,11 +121,11 @@ server {
     server_name signature.yourdomain.com;
 
     # SSL Certificates (Managed by Certbot, etc.)
-    ssl_certificate /etc/letsencrypt/live/signature.yourdomain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/signature.yourdomain.com/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/[signature.yourdomain.com/fullchain.pem](https://signature.yourdomain.com/fullchain.pem);
+    ssl_certificate_key /etc/letsencrypt/live/[signature.yourdomain.com/privkey.pem](https://signature.yourdomain.com/privkey.pem);
 
     location / {
-        proxy_pass http://127.0.0.1:8085;
+        proxy_pass [http://127.0.0.1:8085](http://127.0.0.1:8085);
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -140,19 +148,19 @@ You will need two configurations in Authentik:
 The web app is only half the puzzle. To actually inject signatures, you must deploy the provided Lua script into your Mailcow/Rspamd instance.
 
 1. **Copy the Script:**
-   Transfer the `opensigweave.lua` script from this repository into your Mailcow server's custom plugins directory:
+   Transfer the `opensigweave.lua` script from this repository into your Mailcow server's custom Lua directory:
    ```text
-   /opt/mailcow-dockerized/data/conf/rspamd/plugins.d/opensigweave.lua
+   /opt/mailcow-dockerized/data/conf/rspamd/lua/opensigweave.lua
    ```
 
 2. **Configure the Lua Script:**
    Open the Lua script and update the configuration block at the top with your OpenSigWeave API URL and the `ENGINE_API_KEY` you set in your `.env` file.
 
 3. **Enable the Plugin:**
-   Tell Rspamd to load the new plugin by adding an empty configuration block to your local overrides.
-   Open `/opt/mailcow-dockerized/data/conf/rspamd/rspamd.conf.local` and add:
+   Tell Rspamd to load the new plugin by pointing to the Lua file in your local configuration.
+   Open `/opt/mailcow-dockerized/data/conf/rspamd/rspamd.conf.local` (create it if it doesn't exist) and add:
    ```hcl
-   opensigweave { }
+   lua = "/etc/rspamd/lua/opensigweave.lua";
    ```
 
 4. **Restart Rspamd:**
@@ -166,3 +174,11 @@ The web app is only half the puzzle. To actually inject signatures, you must dep
 ## 🔒 Security Notes
 * OpenSigWeave's API endpoint (`/api/signature/{email}`) exposes employee metadata (Phone, Title, etc.) to successfully compile signatures. 
 * This endpoint is strictly protected by the `X-Engine-Key` header. Ensure your `ENGINE_API_KEY` is a long, cryptographically secure string, and never expose it to frontend clients.
+
+---
+
+## 🙏 Acknowledgments & Licensing
+
+OpenSigWeave's Rspamd injection engine (`opensigweave.lua`) heavily relies on the MIME-rebuild array logic originally developed by the **Mailcow** team for their internal `MOO_FOOTER` module. 
+
+A massive thank you to Mailcow / Servercow for their hard work. In compliance with their original work and to give back to the community, this entire project is proudly open-sourced under the **GNU GPL v3.0** license.
