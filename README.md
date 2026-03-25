@@ -185,6 +185,11 @@ The web app is only half the puzzle. To actually inject signatures, you must dep
 
 ---
 
+## 🪲 Bugs and Feature Requests
+* Bug reports and feature requests are always welcome! Where possible, patches and new updates will be pushed with responses directly on submitted issues for status, questions, etc.
+
+---
+
 ## 🙏 Acknowledgments & Licensing
 
 OpenSigWeave's Rspamd injection engine (`opensigweave.lua`) heavily relies on the MIME-rebuild array logic originally developed by the **Mailcow** team for their internal `MOO_FOOTER` module. 
