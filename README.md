@@ -186,7 +186,8 @@ The web app is only half the puzzle. To actually inject signatures, you must dep
 ---
 
 ## 🪲 Bugs and Feature Requests
-* Bug reports and feature requests are always welcome! Where possible, patches and new updates will be pushed with responses directly on submitted issues for status, questions, etc.
+* **Bug reports and Feature Requests** are always welcome! Where possible, patches and new updates will be pushed with responses directly on submitted issues for status, questions, etc.
+* **Pull requests** are also welcome and will be reviewed as soon as possible for *functionality, quality of code, and scope*. If approved, changes will be included in the next update of **OpenSigWeave**.
 
 ---
 
