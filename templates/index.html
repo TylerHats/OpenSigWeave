@@ -90,11 +90,26 @@
                             <button onclick="saveUserSignature()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded text-sm transition shadow" {% if not can_edit %}disabled{% endif %}>Save Override</button>
                         </div>
                     </div>
-                    <div class="bg-gray-900 p-4"><div id="quill-editor" class="h-[300px]"></div></div>
+                    
+                    <div class="relative bg-gray-900 p-4">
+                        <div id="user-quill-lock" class="hidden absolute inset-4 z-20 bg-gray-900/95 backdrop-blur flex flex-col items-center justify-center text-center rounded shadow-lg border border-gray-700">
+                            <svg class="w-10 h-10 text-yellow-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                            <h3 class="text-lg font-bold text-white">Advanced Layout Detected</h3>
+                            <p class="text-sm text-gray-300 mt-1 max-w-sm">This signature contains tables or advanced HTML. Visual editing is locked to prevent data loss.</p>
+                            <p class="text-xs text-gray-500 mt-4">Use the Advanced HTML editor below to make changes.</p>
+                        </div>
+                        <div id="quill-editor" class="h-[300px]"></div>
+                    </div>
+                    
                     <div x-data="{ showHtml: false }" class="bg-gray-800 border-t border-gray-700">
                         <div class="flex justify-between items-center px-4 py-3">
                             <button @click="showHtml = !showHtml" class="text-sm font-medium text-gray-400 hover:text-white flex items-center gap-2 transition-colors"><svg class="w-4 h-4 transition-transform duration-200" :class="showHtml ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>Advanced: Edit Raw HTML</button>
-                            <button @click="$dispatch('open-preview', { html: quill.root.innerHTML })" class="bg-gray-700 hover:bg-gray-600 border border-gray-600 text-white px-4 py-1.5 rounded shadow-sm text-sm transition flex items-center gap-2">Preview Signature</button>
+                            <div class="flex gap-2">
+                                <button @click="$dispatch('open-sanitizer', 'personal')" class="bg-green-700 hover:bg-green-600 border border-green-600 text-white px-4 py-1.5 rounded shadow-sm text-sm transition flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>Import HTML
+                                </button>
+                                <button @click="$dispatch('open-preview', { html: document.getElementById('raw-html-editor').value })" class="bg-gray-700 hover:bg-gray-600 border border-gray-600 text-white px-4 py-1.5 rounded shadow-sm text-sm transition flex items-center gap-2">Preview Signature</button>
+                            </div>
                         </div>
                         <div x-show="showHtml" style="display: none;" class="px-4 pb-4"><textarea id="raw-html-editor" class="w-full h-48 bg-gray-950 text-green-400 font-mono text-sm p-3 rounded border border-gray-700 focus:outline-none focus:border-blue-500"></textarea></div>
                     </div>
@@ -182,13 +197,23 @@
                         <div>
                             <h4 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-2">Master Template Editor</h4>
                             <div class="bg-gray-900 rounded-lg border border-gray-700 overflow-hidden flex flex-col">
-                                <div class="p-4 bg-gray-900">
+                                <div class="relative p-4 bg-gray-900">
+                                    <div id="domain-quill-lock" class="hidden absolute inset-4 z-20 bg-gray-900/95 backdrop-blur flex flex-col items-center justify-center text-center rounded shadow-lg border border-gray-700">
+                                        <svg class="w-10 h-10 text-yellow-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                        <h3 class="text-lg font-bold text-white">Advanced Layout Detected</h3>
+                                        <p class="text-sm text-gray-300 mt-1 max-w-sm">Visual editing is locked to prevent data loss.</p>
+                                    </div>
                                     <div id="domain-quill-editor" class="h-[250px]"></div>
                                 </div>
                                 <div x-data="{ showHtml: false }" class="bg-gray-800 border-t border-gray-700">
                                     <div class="flex justify-between items-center px-4 py-3">
                                         <button @click="showHtml = !showHtml" class="text-sm font-medium text-gray-400 hover:text-white flex items-center gap-2 transition-colors"><svg class="w-4 h-4 transition-transform duration-200" :class="showHtml ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>Advanced: Edit Raw HTML</button>
-                                        <button @click="$dispatch('open-preview', { html: domainQuill.root.innerHTML, previewDomain: domain.domain_name })" class="bg-gray-700 hover:bg-gray-600 border border-gray-600 text-white px-4 py-1.5 rounded shadow-sm text-sm transition flex items-center gap-2">Live Preview</button>
+                                        <div class="flex gap-2">
+                                            <button @click="$dispatch('open-sanitizer', 'domain')" class="bg-green-700 hover:bg-green-600 border border-green-600 text-white px-4 py-1.5 rounded shadow-sm text-sm transition flex items-center gap-2">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>Import HTML
+                                            </button>
+                                            <button @click="$dispatch('open-preview', { html: document.getElementById('domain-raw-html-editor').value, previewDomain: domain.domain_name })" class="bg-gray-700 hover:bg-gray-600 border border-gray-600 text-white px-4 py-1.5 rounded shadow-sm text-sm transition flex items-center gap-2">Live Preview</button>
+                                        </div>
                                     </div>
                                     <div x-show="showHtml" style="display: none;" class="px-4 pb-4"><textarea id="domain-raw-html-editor" class="w-full h-48 bg-gray-950 text-green-400 font-mono text-sm p-3 rounded border border-gray-700 focus:outline-none focus:border-blue-500"></textarea></div>
                                 </div>
@@ -217,13 +242,23 @@
                                     <button @click="editingUserEmail = ''" class="text-xs text-gray-400 hover:text-white">Cancel</button>
                                 </div>
                             </div>
-                            <div class="p-4 bg-gray-900" :class="editingUserDisabled ? 'opacity-50 pointer-events-none' : ''">
+                            <div class="relative p-4 bg-gray-900" :class="editingUserDisabled ? 'opacity-50 pointer-events-none' : ''">
+                                <div id="admin-quill-lock" class="hidden absolute inset-4 z-20 bg-gray-900/95 backdrop-blur flex flex-col items-center justify-center text-center rounded shadow-lg border border-gray-700">
+                                    <svg class="w-10 h-10 text-yellow-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                    <h3 class="text-lg font-bold text-white">Advanced Layout Detected</h3>
+                                    <p class="text-sm text-gray-300 mt-1 max-w-sm">Visual editing is locked to prevent data loss.</p>
+                                </div>
                                 <div id="admin-quill-editor" class="h-[200px]"></div>
                             </div>
                             <div x-data="{ showHtml: false }" class="bg-gray-800 border-t border-gray-700" :class="editingUserDisabled ? 'opacity-50 pointer-events-none' : ''">
                                 <div class="flex justify-between items-center px-4 py-3">
                                     <button @click="showHtml = !showHtml" class="text-sm font-medium text-gray-400 hover:text-white flex items-center gap-2 transition-colors"><svg class="w-4 h-4 transition-transform duration-200" :class="showHtml ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>Advanced: Edit Raw HTML</button>
-                                    <button @click="$dispatch('open-preview', { html: adminQuill.root.innerHTML, previewEmail: editingUserEmail })" class="bg-gray-700 hover:bg-gray-600 border border-gray-600 text-white px-4 py-1.5 rounded shadow-sm text-sm transition flex items-center gap-2">Live Preview</button>
+                                    <div class="flex gap-2">
+                                        <button @click="$dispatch('open-sanitizer', 'admin')" class="bg-green-700 hover:bg-green-600 border border-green-600 text-white px-4 py-1.5 rounded shadow-sm text-sm transition flex items-center gap-2">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>Import HTML
+                                        </button>
+                                        <button @click="$dispatch('open-preview', { html: document.getElementById('admin-raw-html-editor').value, previewEmail: editingUserEmail })" class="bg-gray-700 hover:bg-gray-600 border border-gray-600 text-white px-4 py-1.5 rounded shadow-sm text-sm transition flex items-center gap-2">Live Preview</button>
+                                    </div>
                                 </div>
                                 <div x-show="showHtml" style="display: none;" class="px-4 pb-4"><textarea id="admin-raw-html-editor" class="w-full h-48 bg-gray-950 text-green-400 font-mono text-sm p-3 rounded border border-gray-700 focus:outline-none focus:border-blue-500"></textarea></div>
                             </div>
@@ -253,11 +288,36 @@
                 </div>
 
                 <div x-show="modalTab === 'settings'" class="bg-gray-900 px-6 py-4 flex flex-row-reverse border-t border-gray-700">
-                    <button @click="$dispatch('save-domain-settings', {domain: domain, allowOverrides: allowOverrides, injectOnReplies: injectOnReplies, trimWhitespace: trimWhitespace, stripDeviceSignatures: stripDeviceSignatures, html: domainQuill.root.innerHTML}); show = false;" class="ml-3 px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-500 text-sm font-medium transition">Save Settings</button>
+                    <button @click="$dispatch('save-domain-settings', {domain: domain, allowOverrides: allowOverrides, injectOnReplies: injectOnReplies, trimWhitespace: trimWhitespace, stripDeviceSignatures: stripDeviceSignatures, html: document.getElementById('domain-raw-html-editor').value}); show = false;" class="ml-3 px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-500 text-sm font-medium transition">Save Settings</button>
                     <button @click="show = false" class="px-4 py-2 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 text-sm font-medium transition">Close</button>
                 </div>
                 <div x-show="modalTab === 'users'" class="bg-gray-900 px-6 py-4 flex flex-row-reverse border-t border-gray-700">
                     <button @click="show = false" class="px-4 py-2 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 text-sm font-medium transition">Close Manager</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-data="{ show: false, rawInput: '', targetEditor: '' }" 
+         @open-sanitizer.window="show = true; targetEditor = $event.detail; rawInput = ''; setTimeout(() => $refs.sanitizerInput.focus(), 100);" 
+         @keydown.escape.window="show = false" 
+         x-show="show" style="display: none;" class="fixed inset-0 z-[70] overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+            <div x-show="show" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm transition-opacity" @click="show = false"></div>
+            <div x-show="show" class="relative inline-block align-bottom bg-gray-800 rounded-lg text-left overflow-hidden shadow-2xl border border-gray-700 sm:my-8 sm:align-middle sm:max-w-3xl w-full transform transition-all flex flex-col">
+                <div class="px-6 py-5 border-b border-gray-700 bg-gray-900">
+                    <h3 class="text-xl font-bold text-white mb-2">Import HTML Signature</h3>
+                    <p class="text-sm text-gray-400">Online generators wrap code in full-page tags (<code>&lt;html&gt;</code>, <code>&lt;head&gt;</code>) that will break email layouts. Paste your raw generator code here. The browser will safely extract the core table structure and strip out the dangerous tags.</p>
+                </div>
+                <div class="p-6 bg-gray-800">
+                    <textarea x-ref="sanitizerInput" x-model="rawInput" placeholder="Paste your <!DOCTYPE HTML>... code here" class="w-full h-64 bg-gray-950 border border-gray-600 rounded-lg p-3 text-green-400 font-mono text-sm focus:outline-none focus:border-blue-500"></textarea>
+                </div>
+                <div class="bg-gray-900 px-6 py-4 flex flex-row-reverse border-t border-gray-700">
+                    <button @click="$dispatch('sanitize-html', { html: rawInput, target: targetEditor }); show = false;" class="ml-3 px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-500 text-sm font-medium transition shadow flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        Sanitize & Import
+                    </button>
+                    <button @click="show = false" class="px-4 py-2 bg-gray-700 text-gray-200 rounded hover:bg-gray-600 border border-gray-600 text-sm font-medium transition">Cancel</button>
                 </div>
             </div>
         </div>
@@ -316,28 +376,69 @@
         var quill, domainQuill, adminQuill;
         const notify = (msg, type = 'success') => window.dispatchEvent(new CustomEvent('notify', { detail: { msg, type } }));
 
+        // THE SMART LOCK ENGINE
+        function toggleLock(lockId, rawId) {
+            const rawVal = document.getElementById(rawId).value.toLowerCase();
+            const lockEl = document.getElementById(lockId);
+            if (lockEl) {
+                if (rawVal.includes('<table')) lockEl.classList.remove('hidden');
+                else lockEl.classList.add('hidden');
+            }
+        }
+        function checkAllLocks() {
+            toggleLock('user-quill-lock', 'raw-html-editor');
+            toggleLock('domain-quill-lock', 'domain-raw-html-editor');
+            toggleLock('admin-quill-lock', 'admin-raw-html-editor');
+        }
+
         document.addEventListener('DOMContentLoaded', async function() {
             const tb = [['bold', 'italic', 'underline'], [{ 'color': [] }, { 'background': [] }], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['link', 'image'], ['clean']];
             quill = new Quill('#quill-editor', { theme: 'snow', modules: { toolbar: tb }});
             domainQuill = new Quill('#domain-quill-editor', { theme: 'snow', modules: { toolbar: tb }});
             
-            quill.on('text-change', () => { document.getElementById('raw-html-editor').value = quill.root.innerHTML; });
-            document.getElementById('raw-html-editor').addEventListener('input', function() { quill.root.innerHTML = this.value; });
-            domainQuill.on('text-change', () => { document.getElementById('domain-raw-html-editor').value = domainQuill.root.innerHTML; });
-            document.getElementById('domain-raw-html-editor').addEventListener('input', function() { domainQuill.root.innerHTML = this.value; });
+            quill.on('text-change', (d, old, source) => { if (source === 'user') { document.getElementById('raw-html-editor').value = quill.root.innerHTML; checkAllLocks(); } });
+            document.getElementById('raw-html-editor').addEventListener('input', function() { quill.root.innerHTML = this.value; checkAllLocks(); });
+            
+            domainQuill.on('text-change', (d, old, source) => { if (source === 'user') { document.getElementById('domain-raw-html-editor').value = domainQuill.root.innerHTML; checkAllLocks(); } });
+            document.getElementById('domain-raw-html-editor').addEventListener('input', function() { domainQuill.root.innerHTML = this.value; checkAllLocks(); });
 
             if(!{{ 'true' if can_edit else 'false' }}) { quill.disable(); }
 
             const res = await fetch('/api/my-signature');
             if(res.ok) {
                 const data = await res.json();
-                quill.root.innerHTML = data.html_content;
                 document.getElementById('raw-html-editor').value = data.html_content;
+                quill.root.innerHTML = data.html_content;
+                checkAllLocks();
             }
         });
 
+        window.addEventListener('sanitize-html', (e) => {
+            const { html, target } = e.detail;
+            if (!html) return;
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            let cleanHtml = doc.body.innerHTML.trim();
+            cleanHtml = cleanHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+
+            if (target === 'personal') {
+                document.getElementById('raw-html-editor').value = cleanHtml;
+                quill.root.innerHTML = cleanHtml;
+            } else if (target === 'domain') {
+                document.getElementById('domain-raw-html-editor').value = cleanHtml;
+                domainQuill.root.innerHTML = cleanHtml;
+            } else if (target === 'admin') {
+                document.getElementById('admin-raw-html-editor').value = cleanHtml;
+                if(adminQuill) adminQuill.root.innerHTML = cleanHtml;
+            }
+            checkAllLocks();
+            notify("Signature successfully imported and sanitized!");
+        });
+
         async function saveUserSignature() {
-            const res = await fetch('/api/my-signature', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ html_content: quill.root.innerHTML }) });
+            const finalHtml = document.getElementById('raw-html-editor').value;
+            const res = await fetch('/api/my-signature', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ html_content: finalHtml }) });
             if(res.ok) notify("Signature saved successfully!"); else notify("Failed to save.", "error");
         }
 
@@ -348,12 +449,17 @@
                 show: false, domain: null, allowOverrides: true, injectOnReplies: false, trimWhitespace: true, stripDeviceSignatures: false, modalTab: 'settings', userOverrides: [], newOverrideEmail: '', editingUserEmail: '', editingUserDisabled: false,
                 open(domainData) {
                     this.show = true; this.domain = domainData; this.allowOverrides = domainData.allow_overrides; this.injectOnReplies = domainData.inject_on_replies; this.trimWhitespace = domainData.trim_whitespace; this.stripDeviceSignatures = domainData.strip_device_signatures; this.modalTab = 'settings'; this.editingUserEmail = '';
-                    setTimeout(() => { domainQuill.root.innerHTML = domainData.template_html; document.getElementById('domain-raw-html-editor').value = domainData.template_html; }, 50);
+                    
+                    setTimeout(() => { 
+                        document.getElementById('domain-raw-html-editor').value = domainData.template_html;
+                        domainQuill.root.innerHTML = domainData.template_html; 
+                        checkAllLocks();
+                    }, 50);
                     
                     if(!adminQuill) {
                         adminQuill = new Quill('#admin-quill-editor', { theme: 'snow', modules: { toolbar: [['bold', 'italic', 'underline'], [{ 'color': [] }, { 'background': [] }], ['link', 'image'], ['clean']] }});
-                        adminQuill.on('text-change', () => { document.getElementById('admin-raw-html-editor').value = adminQuill.root.innerHTML; });
-                        document.getElementById('admin-raw-html-editor').addEventListener('input', function() { adminQuill.root.innerHTML = this.value; });
+                        adminQuill.on('text-change', (d, old, source) => { if (source === 'user') { document.getElementById('admin-raw-html-editor').value = adminQuill.root.innerHTML; checkAllLocks(); } });
+                        document.getElementById('admin-raw-html-editor').addEventListener('input', function() { adminQuill.root.innerHTML = this.value; checkAllLocks(); });
                     }
                 },
                 async fetchOverrides() {
@@ -365,17 +471,21 @@
                     this.editingUserEmail = email; 
                     
                     if (directHtml !== null) { 
+                        document.getElementById('admin-raw-html-editor').value = directHtml;
                         adminQuill.root.innerHTML = directHtml; 
                         this.editingUserDisabled = isDisabled;
                     } else {
                         const existingUser = this.userOverrides.find(u => u.user_email === email);
-                        adminQuill.root.innerHTML = existingUser ? existingUser.html_content : '';
+                        const content = existingUser ? existingUser.html_content : '';
+                        document.getElementById('admin-raw-html-editor').value = content;
+                        adminQuill.root.innerHTML = content;
                         this.editingUserDisabled = existingUser ? existingUser.is_disabled : false;
                     }
-                    setTimeout(() => { document.getElementById('admin-raw-html-editor').value = adminQuill.root.innerHTML; }, 50);
+                    checkAllLocks();
                 },
                 async saveAdminOverride() {
-                    const res = await fetch('/api/admin/overrides', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_email: this.editingUserEmail, html_content: adminQuill.root.innerHTML, is_disabled: this.editingUserDisabled }) });
+                    const finalHtml = document.getElementById('admin-raw-html-editor').value;
+                    const res = await fetch('/api/admin/overrides', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_email: this.editingUserEmail, html_content: finalHtml, is_disabled: this.editingUserDisabled }) });
                     if(res.ok) { notify(`Saved configuration for ${this.editingUserEmail}`); this.editingUserEmail = ''; this.fetchOverrides(); }
                 }
             }
@@ -386,7 +496,7 @@
             if (res.ok) { notify("Domain registered!"); window.dispatchEvent(new CustomEvent('domain-updated')); } else notify("Failed.", "error");
         });
         window.addEventListener('save-domain-settings', async (e) => {
-            const res = await fetch(`/domains/${e.detail.domain.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_active: e.detail.domain.is_active, allow_overrides: e.detail.allowOverrides, inject_on_replies: e.detail.injectOnReplies, trim_whitespace: e.detail.trimWhitespace, strip_device_signatures: e.detail.stripDeviceSignatures, template_html: e.detail.html }) });
+            const res = await fetch(`/domains/${e.detail.domain.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_active: e.detail.domain.is_active, allow_overrides: e.detail.allowOverrides, inject_on_replies: e.detail.injectOnReplies, trim_whitespace: e.detail.trimWhitespace, strip_device_signatures: e.detail.stripDeviceSignatures, template_html: document.getElementById('domain-raw-html-editor').value }) });
             if (res.ok) { notify("Settings saved!"); window.dispatchEvent(new CustomEvent('domain-updated')); }
         });
         
@@ -401,7 +511,9 @@
             } else if (action === 'clear-user') {
                 const res = await fetch('/api/my-signature', { method: 'DELETE' });
                 if(res.ok) {
-                    quill.root.innerHTML = ''; document.getElementById('raw-html-editor').value = '';
+                    document.getElementById('raw-html-editor').value = '';
+                    quill.root.innerHTML = ''; 
+                    checkAllLocks();
                     notify("Signature cleared and removed from database!");
                 } else { notify("Failed to clear signature.", "error"); }
             } else if (action === 'clear-admin') {
