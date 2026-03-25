@@ -6,8 +6,9 @@ Instead of forcing users to configure signatures in their individual mail client
 
 ## ✨ Key Features
 * **Gateway-Level Injection:** Signatures are applied by the mail server, meaning they work identically across all devices and mail clients.
-* **Authentik SSO Integration:** Login is gated strictly via Authentik OIDC. Live attributes (like phone numbers and job titles) are polled instantly during mail transit.
+* **Authentik SSO Integration:** Login is gated strictly via Authentik OIDC. Live attributes (name, phone number, email, title and domain) are polled instantly during mail transit.
 * **Rich Visual Editor:** A custom UI built with Tailwind CSS, Alpine.js, and Quill.js allows users and admins to design signatures visually or via raw HTML.
+* **Advanced HTML Import:** Sanitize and import complex layouts from external generators with an intelligent visual editor lock that protects table-based signatures from accidental formatting loss.
 * **Domain-Level Master Templates:** Enforce a corporate signature standard across an entire domain.
 * **User Overrides:** Allow specific users to customize their signatures, or administratively lock them out.
 * **Intelligent Reply-Chain Detection:** An experimental Lua engine detects when an email is a reply and cleanly injects the signature *above* the quoted history.
@@ -31,6 +32,13 @@ The Lua engine officially supports injecting signatures cleanly into replies sen
 * **Self-Hosted Webmail:** Horde, Roundcube, SOGo (Mailcow default), and Nextcloud Mail.
 
 *Note: If a user sends a reply from an unrecognized client, the Lua engine acts defensively. It will safely abort the inline injection and append the signature to the absolute bottom of the email rather than risk placing it in the middle of a sentence.*
+
+---
+
+## 💡 Usage Tips
+* **External Builders:** For the best results with multi-column layouts, it's recommended to design your signature in an online generator and use the Sanitize & Import feature.
+* **Variable Injection:** When using external builders, simply type {{ first_name }}, {{ title }}, etc., directly into their form fields. When you import the HTML into OpenSigWeave, these will become dynamic placeholders.
+* **Table Support:** If you paste a table into the "Advanced HTML" editor, the Visual Editor will lock to protect your layout. To return to the Visual Editor, you must clear the signature or remove the <table> tags.
 
 ---
 
