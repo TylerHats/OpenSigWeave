@@ -38,7 +38,7 @@ The Lua engine officially supports injecting signatures cleanly into replies sen
 ## 💡 Usage Tips
 * **External Builders:** For the best results with multi-column layouts, it's recommended to design your signature in an online generator and use the Sanitize & Import feature.
 * **Variable Injection:** When using external builders, simply type {{ first_name }}, {{ title }}, etc., directly into their form fields. When you import the HTML into OpenSigWeave, these will become dynamic placeholders.
-* **Table Support:** If you paste a table into the "Advanced HTML" editor, the Visual Editor will lock to protect your layout. To return to the Visual Editor, you must clear the signature or remove the <table> tags.
+* **Table Support:** If you paste a table into the "Advanced HTML" editor, the Visual Editor will lock to protect your layout. To return to the Visual Editor, you must clear the signature or remove the `<table>` tags.
 
 ---
 
