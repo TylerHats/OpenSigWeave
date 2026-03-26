@@ -15,6 +15,11 @@ Instead of forcing users to configure signatures in their individual mail client
 * **Whitespace Normalization (The "Peeler"):** Aggressively strips rogue HTML spaces, empty paragraphs, and quoted-printable soft-breaks from user emails to ensure perfectly crisp spacing around injected signatures.
 * **Mobile Signature Assassin:** Automatically detects and strips default mobile sign-offs (e.g., "Sent from my iPhone" or "Get Outlook for iOS") before applying the professional corporate signature.
 * **The "Kill Switch":** Easily disable signatures entirely for specific service accounts (e.g., `noreply@` or `billing@`).
+* **Branding:** Easy white label branding options for logo, title and title color via simple, persistent files.
+
+---
+## 📸 UI Images
+*Pending*
 
 ---
 
