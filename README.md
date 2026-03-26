@@ -40,11 +40,11 @@ Instead of forcing users to configure signatures in their individual mail client
       <img src="https://hatsthings.com/OpenSigWeave/AdvancedHTMLImport.png" alt="Advanced HTML Import">
     </td>
     <td align="center">
-      <b>Domain Settings UI</b><br>
+      <b>Domain Settings</b><br>
       <img src="https://hatsthings.com/OpenSigWeave/DomainSettingsUI.png" alt="Domain Settings UI">
     </td>
     <td align="center">
-      <b>User Overrides UI</b><br>
+      <b>User Overrides</b><br>
       <img src="https://hatsthings.com/OpenSigWeave/UserOverridesUI.png" alt="User Overrides UI">
     </td>
   </tr>
