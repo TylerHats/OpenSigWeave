@@ -89,7 +89,7 @@ OpenSigWeave is a FastAPI application that utilizes an SQLite database.
 ### Installation
 1. Clone the repository to your application server.
    ```bash
-   git clone [https://github.com/yourusername/opensigweave.git](https://github.com/yourusername/opensigweave.git)
+   git clone https://Github.com/TylerHats/OpenSigWeave.git
    cd opensigweave
    ```
 2. Create and activate a Python virtual environment.
@@ -116,7 +116,7 @@ OpenSigWeave is a FastAPI application that utilizes an SQLite database.
    uvicorn main:app --host 0.0.0.0 --port 8085
    ```
 
-### 7. Running as a Systemd Service (Recommended)
+### Running as a Systemd Service (Recommended)
 To keep OpenSigWeave running permanently and ensure it starts automatically on server reboots, create a systemd service.
 
 1. Create a new service file:
@@ -152,7 +152,7 @@ To keep OpenSigWeave running permanently and ensure it starts automatically on s
    sudo systemctl start opensigweave
    ```
 
-### 8. Reverse Proxy & SSL Configuration
+### Reverse Proxy & SSL Configuration
 OpenSigWeave does not handle SSL termination natively. It runs as a plain HTTP FastAPI application and **must** be placed behind a reverse proxy to secure the SSO callbacks and administrative sessions via HTTPS.
 
 Here is a standard configuration example for **Nginx**:
@@ -163,8 +163,8 @@ server {
     server_name signature.yourdomain.com;
 
     # SSL Certificates (Managed by Certbot, etc.)
-    ssl_certificate /etc/letsencrypt/live/[signature.yourdomain.com/fullchain.pem](https://signature.yourdomain.com/fullchain.pem);
-    ssl_certificate_key /etc/letsencrypt/live/[signature.yourdomain.com/privkey.pem](https://signature.yourdomain.com/privkey.pem);
+    ssl_certificate /etc/letsencrypt/live/signature.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/signature.yourdomain.com/privkey.pem;
 
     location / {
         proxy_pass [http://127.0.0.1:8085](http://127.0.0.1:8085);
