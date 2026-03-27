@@ -6,14 +6,49 @@ Instead of forcing users to configure signatures in their individual mail client
 
 ## ✨ Key Features
 * **Gateway-Level Injection:** Signatures are applied by the mail server, meaning they work identically across all devices and mail clients.
-* **Authentik SSO Integration:** Login is gated strictly via Authentik OIDC. Live attributes (like phone numbers and job titles) are polled instantly during mail transit.
+* **Authentik SSO Integration:** Login is gated strictly via Authentik OIDC. Live attributes (name, phone number, email, title and domain) are polled instantly during mail transit.
 * **Rich Visual Editor:** A custom UI built with Tailwind CSS, Alpine.js, and Quill.js allows users and admins to design signatures visually or via raw HTML.
+* **Advanced HTML Import:** Sanitize and import complex layouts from external generators with an intelligent visual editor lock that protects table-based signatures from accidental formatting loss.
 * **Domain-Level Master Templates:** Enforce a corporate signature standard across an entire domain.
 * **User Overrides:** Allow specific users to customize their signatures, or administratively lock them out.
 * **Intelligent Reply-Chain Detection:** An experimental Lua engine detects when an email is a reply and cleanly injects the signature *above* the quoted history.
 * **Whitespace Normalization (The "Peeler"):** Aggressively strips rogue HTML spaces, empty paragraphs, and quoted-printable soft-breaks from user emails to ensure perfectly crisp spacing around injected signatures.
 * **Mobile Signature Assassin:** Automatically detects and strips default mobile sign-offs (e.g., "Sent from my iPhone" or "Get Outlook for iOS") before applying the professional corporate signature.
 * **The "Kill Switch":** Easily disable signatures entirely for specific service accounts (e.g., `noreply@` or `billing@`).
+* **Branding:** Easy white label branding options for logo, title and title color via simple, persistent files.
+
+---
+## 📸 UI Images
+
+<table width="100%">
+  <tr>
+    <td align="center">
+      <b>User UI</b><br>
+      <img src="https://hatsthings.com/OpenSigWeave/UserUI.png" alt="User UI">
+    </td>
+    <td align="center">
+      <b>Admin UI</b><br>
+      <img src="https://hatsthings.com/OpenSigWeave/AdminUI.png" alt="Admin UI">
+    </td>
+  </tr>
+</table>
+
+<table width="100%">
+  <tr>
+    <td align="center">
+      <b>Advanced HTML Import</b><br>
+      <img src="https://hatsthings.com/OpenSigWeave/AdvancedHTMLImport.png" alt="Advanced HTML Import">
+    </td>
+    <td align="center">
+      <b>Domain Settings</b><br>
+      <img src="https://hatsthings.com/OpenSigWeave/DomainSettingsUI.png" alt="Domain Settings UI">
+    </td>
+    <td align="center">
+      <b>User Overrides</b><br>
+      <img src="https://hatsthings.com/OpenSigWeave/UserOverridesUI.png" alt="User Overrides UI">
+    </td>
+  </tr>
+</table>
 
 ---
 
@@ -34,6 +69,13 @@ The Lua engine officially supports injecting signatures cleanly into replies sen
 
 ---
 
+## 💡 Usage Tips
+* **External Builders:** For the best results with multi-column layouts, it's recommended to design your signature in an online generator and use the Sanitize & Import feature.
+* **Variable Injection:** When using external builders, simply type {{ first_name }}, {{ title }}, etc., directly into their form fields. When you import the HTML into OpenSigWeave, these will become dynamic placeholders.
+* **Table Support:** If you paste a table into the "Advanced HTML" editor, the Visual Editor will lock to protect your layout. To return to the Visual Editor, you must clear the signature or remove the `<table>` tags.
+
+---
+
 ## 🚀 1. Deploying the Web App
 
 OpenSigWeave is a FastAPI application that utilizes an SQLite database. 
@@ -47,7 +89,7 @@ OpenSigWeave is a FastAPI application that utilizes an SQLite database.
 ### Installation
 1. Clone the repository to your application server.
    ```bash
-   git clone [https://github.com/yourusername/opensigweave.git](https://github.com/yourusername/opensigweave.git)
+   git clone https://Github.com/TylerHats/OpenSigWeave.git
    cd opensigweave
    ```
 2. Create and activate a Python virtual environment.
@@ -74,7 +116,7 @@ OpenSigWeave is a FastAPI application that utilizes an SQLite database.
    uvicorn main:app --host 0.0.0.0 --port 8085
    ```
 
-### 7. Running as a Systemd Service (Recommended)
+### Running as a Systemd Service (Recommended)
 To keep OpenSigWeave running permanently and ensure it starts automatically on server reboots, create a systemd service.
 
 1. Create a new service file:
@@ -110,7 +152,7 @@ To keep OpenSigWeave running permanently and ensure it starts automatically on s
    sudo systemctl start opensigweave
    ```
 
-### 8. Reverse Proxy & SSL Configuration
+### Reverse Proxy & SSL Configuration
 OpenSigWeave does not handle SSL termination natively. It runs as a plain HTTP FastAPI application and **must** be placed behind a reverse proxy to secure the SSO callbacks and administrative sessions via HTTPS.
 
 Here is a standard configuration example for **Nginx**:
@@ -121,8 +163,8 @@ server {
     server_name signature.yourdomain.com;
 
     # SSL Certificates (Managed by Certbot, etc.)
-    ssl_certificate /etc/letsencrypt/live/[signature.yourdomain.com/fullchain.pem](https://signature.yourdomain.com/fullchain.pem);
-    ssl_certificate_key /etc/letsencrypt/live/[signature.yourdomain.com/privkey.pem](https://signature.yourdomain.com/privkey.pem);
+    ssl_certificate /etc/letsencrypt/live/signature.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/signature.yourdomain.com/privkey.pem;
 
     location / {
         proxy_pass [http://127.0.0.1:8085](http://127.0.0.1:8085);
@@ -174,6 +216,12 @@ The web app is only half the puzzle. To actually inject signatures, you must dep
 ## 🔒 Security Notes
 * OpenSigWeave's API endpoint (`/api/signature/{email}`) exposes employee metadata (Phone, Title, etc.) to successfully compile signatures. 
 * This endpoint is strictly protected by the `X-Engine-Key` header. Ensure your `ENGINE_API_KEY` is a long, cryptographically secure string, and never expose it to frontend clients.
+
+---
+
+## 🪲 Bugs and Feature Requests
+* **Bug reports and Feature Requests** are always welcome! Where possible, patches and new updates will be pushed with responses directly on submitted issues for status, questions, etc.
+* **Pull requests** are also welcome and will be reviewed as soon as possible for *functionality, quality of code, and scope*. If approved, changes will be included in the next update of **OpenSigWeave**.
 
 ---
 
