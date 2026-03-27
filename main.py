@@ -79,6 +79,7 @@ oauth.register(
 
 templates = Jinja2Templates(directory="templates")
 app.mount("/branding", StaticFiles(directory="branding"), name="branding")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 def get_db():
     db = SessionLocal()
