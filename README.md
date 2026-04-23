@@ -58,6 +58,8 @@ New, outbound emails are universally supported across all clients.
 However, because there is no universal web standard for how email clients format reply chains, OpenSigWeave's **Experimental Reply Injection** uses specific Regex patterns to find the exact HTML line where the "quoted history" begins. 
 
 The Lua engine officially supports injecting signatures cleanly into replies sent from the following clients:
+* ***Pending Testing***
+The Lua engine also theorhetically supports injecting signatures into replies sent from these clients, but has not been verified:
 * **Microsoft Outlook:** Classic Desktop, New Desktop, OWA (Web), and iOS/Android Mobile Apps.
 * **Apple Mail:** iOS, iPadOS, and macOS native mail apps.
 * **Gmail:** Web, iOS, and Android Mobile Apps.
