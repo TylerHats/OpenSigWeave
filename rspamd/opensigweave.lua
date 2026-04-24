@@ -10,17 +10,12 @@ local ENGINE_API_KEY = "5dG46PIS76dsf68fanffggd870aejer7BW5T0NARsdfY8A967YERGxV"
 local API_URL_BASE = "https://signature.hatsthings.com/api/signature/"
 
 local html_splitters = {
-    -- SOGo / Apple Mail Attribution Catchers
-    '<br[^>]*>%s*<br[^>]*>%s*<br[^>]*>[^<]*On .- wrote:',
-    '<br[^>]*>%s*<br[^>]*>[^<]*On .- wrote:',
-    '<br[^>]*>[^<]*On .- wrote:',
-    '<p[^>]*>&nbsp;</p>%s*On .- wrote:',
-    
-    -- Thunderbird Mobile Catchers
-    '<hr[^>]*>%s*<b>From:</b>',
-    '<div[^>]*>%s*<hr[^>]*>%s*<b>From:</b>',
-    
-    -- Standard Wrappers
+    '<br[^>]*>[%s\r\n]*<br[^>]*>[%s\r\n]*<br[^>]*>[^<]*On .- wrote:',
+    '<br[^>]*>[%s\r\n]*<br[^>]*>[^<]*On .- wrote:',
+    '<br[^>]*>[%s\r\n]*[^<]*On .- wrote:',
+    '<p[^>]*>&nbsp;</p>[%s\r\n]*On .- wrote:',
+    '<hr[^>]*>[%s\r\n]*<b>From:</b>',
+    '<div[^>]*>[%s\r\n]*<hr[^>]*>[%s\r\n]*<b>From:</b>',
     '<div class="gmail_quote"', '<div class=3D"gmail_quote"',
     '<div class="quote"', '<div class=3D"quote"',
     '<blockquote[^>]*type="cite"', '<blockquote[^>]*type=3D"cite"',
@@ -36,7 +31,7 @@ local html_splitters = {
 }
 
 local plain_splitters = {
-    '\r?\n%-+ Original Message %-+', -- Catches any number of dashes (Thunderbird Mobile)
+    '\r?\n%-+ Original Message %-+',
     '\r?\nOn .- wrote:',
     '\r?\nAm .- schrieb .-*:',
     '\r?\nLe .- a écrit%s*:',
@@ -54,14 +49,6 @@ local function inject_signature(task)
 
     local sender_email = tostring(envfrom[1].addr):lower()
     local is_reply = task:get_header_raw('in-reply-to') ~= nil or task:get_header_raw('references') ~= nil
-
-    local function newline(task)
-        local t = task:get_newlines_type()
-        if t == 'cr' then return '\r'
-        elseif t == 'lf' then return '\n'
-        end
-        return '\r\n'
-    end
 
     local function http_callback(err, code, body, headers)
         if err or code ~= 200 then
@@ -104,13 +91,21 @@ local function inject_signature(task)
                 html = html:gsub("\194\160$", "")
                 html = html:gsub("=$", "")
                 
-                -- Aggressive gap removal for SOGo and Thunderbird
                 html = html:gsub("<br[^>]*>[%s\r\n]*$", "")
+                html = html:gsub("<br[^>]*>[%s\r\n]*</[dD][iI][vV]>$", "</div>")
+                html = html:gsub("<br[^>]*>[%s\r\n]*</[pP]>$", "</p>")
+                
+                -- The NextCloud / Horde whitespace fixes:
+                -- Catch standard empty paragraphs, HTML entity NBSP, and raw UTF-8 (\194\160) NBSP
                 html = html:gsub("<[pP][^>]*>[%s\r\n]*</[pP]>$", "")
                 html = html:gsub("<[pP][^>]*>[%s\r\n]*&nbsp;[%s\r\n]*</[pP]>$", "")
-                html = html:gsub("<[pP][^>]*>[%s\r\n]*<br[^>]*>[%s\r\n]*</[pP]>$", "")
+                html = html:gsub("<[pP][^>]*>[%s\r\n]*\194\160[%s\r\n]*</[pP]>$", "")
+                
                 html = html:gsub("<[dD][iI][vV][^>]*>[%s\r\n]*</[dD][iI][vV]>$", "")
-                html = html:gsub("<[dD][iI][vV][^>]*>[%s\r\n]*<br[^>]*>[%s\r\n]*</[dD][iI][vV]>$", "")
+                html = html:gsub("<[dD][iI][vV][^>]*>[%s\r\n]*&nbsp;[%s\r\n]*</[dD][iI][vV]>$", "")
+                html = html:gsub("<[dD][iI][vV][^>]*>[%s\r\n]*\194\160[%s\r\n]*</[dD][iI][vV]>$", "")
+                
+                html = html:gsub("</div>[%s\r\n]*<br[^>]*>[%s\r\n]*$", "</div>")
             until html == prev
             return html
         end
@@ -126,6 +121,7 @@ local function inject_signature(task)
                 plain = plain:gsub("=C2=A0$", "")
                 plain = plain:gsub("\194\160$", "")
                 plain = plain:gsub("=$", "")
+                plain = plain:gsub("\194\160[%s\r\n]*$", "")
             until plain == prev
             return plain
         end
@@ -140,6 +136,9 @@ local function inject_signature(task)
                 spliced = spliced:gsub("<[bB][rR]%s*/?>[Ss]ent from my [^<]+", "")
                 spliced = spliced:gsub("<[bB][rR]%s*/?>[Gg]et Outlook for [^<]+", "")
             end
+
+            local html_spacer_top = '\n<br clear="all"><br>\n<div style="display:block; clear:both;">\n'
+            local html_spacer_bottom = '\n</div>\n<br>\n'
 
             if is_reply then
                 local best_s = nil
@@ -157,10 +156,6 @@ local function inject_signature(task)
                         after = after:gsub("^([%s\r\n]*<[bB][rR]%s*/?>)+", "")
                         
                         local clean_sig = trim_whitespace and clean_trailing_html(signature):gsub("^[%s\r\n]+", "") or signature
-                        
-                        local html_spacer_top = '\n<br>\n<div style="display:block; clear:both;">\n'
-                        local html_spacer_bottom = '\n</div>\n<br>\n'
-                        
                         spliced = before .. html_spacer_top .. clean_sig .. html_spacer_bottom .. after
                     else
                         before = clean_trailing_plain(before)
@@ -184,10 +179,11 @@ local function inject_signature(task)
                         local after = string.sub(spliced, last_body_s)
                         before = clean_trailing_html(before)
                         local clean_sig = trim_whitespace and clean_trailing_html(signature):gsub("^[%s\r\n]+", "") or signature
-                        spliced = before .. "<br><br>\n" .. clean_sig .. "\n" .. after
+                        
+                        spliced = before .. html_spacer_top .. clean_sig .. html_spacer_bottom .. after
                     else
                         local clean_sig = trim_whitespace and clean_trailing_html(signature):gsub("^[%s\r\n]+", "") or signature
-                        spliced = clean_trailing_html(spliced) .. "<br><br>\n" .. clean_sig .. "\n"
+                        spliced = clean_trailing_html(spliced) .. html_spacer_top .. clean_sig .. html_spacer_bottom
                     end
                 else
                     local clean_sig = trim_whitespace and clean_trailing_plain(signature):gsub("^[%s\r\n]+", "") or signature
@@ -248,11 +244,11 @@ local function inject_signature(task)
             return before_body .. new_headers .. encoded_payload .. after_body, true
         end
 
-        local out = {}
-        local newline_s = newline(task)
-        
         local raw_body_data = task:get_rawbody()
         local raw_body = raw_body_data and tostring(raw_body_data) or ""
+        
+        local raw_headers_data = task:get_raw_headers()
+        local raw_headers = raw_headers_data and tostring(raw_headers_data) or ""
         
         local ct_raw = task:get_header_raw('Content-Type')
         local ct_header = ct_raw and tostring(ct_raw):lower() or ""
@@ -261,7 +257,7 @@ local function inject_signature(task)
         local is_flat_plain = not is_multipart and (ct_header == "" or string.find(ct_header, "text/plain") ~= nil)
 
         if is_flat_plain then
-            rspamd_logger.infox(task, "OpenSigWeave: Upgrading Flat text/plain to multipart/alternative.")
+            rspamd_logger.errx(task, "OpenSigWeave: Upgrading Flat text/plain to multipart/alternative.")
             
             local enc_raw = task:get_header_raw('Content-Transfer-Encoding')
             local encoding = (enc_raw and tostring(enc_raw) or "7bit"):lower()
@@ -285,7 +281,7 @@ local function inject_signature(task)
             
             local spliced_html, _ = splice_body_logic(html_body, html_splitters, html_sig, true)
 
-            local boundary = "=_OpenSigWeave_Alt_" .. rspamd_util.random_hex(12)
+            local boundary = "----OpenSigWeaveAlt" .. rspamd_util.random_hex(12)
             
             local qp_plain = tostring(rspamd_util.encode_qp(spliced_plain, 76) or spliced_plain):gsub("[%s\r\n]+$", "")
             local qp_html = tostring(rspamd_util.encode_qp(spliced_html, 76) or spliced_html):gsub("[%s\r\n]+$", "")
@@ -298,58 +294,71 @@ local function inject_signature(task)
                 "Content-Type: text/html; charset=utf-8\r\n" ..
                 "Content-Transfer-Encoding: quoted-printable\r\n\r\n" ..
                 qp_html .. "\r\n" ..
-                "--" .. boundary .. "--\r\n\r\n"
+                "--" .. boundary .. "--\r\n"
 
-            -- MILTER FIX: Explicitly force Postfix to rewrite the routing headers
-            task:modify_header('Content-Type', 'multipart/alternative; boundary="' .. boundary .. '"')
-            task:modify_header('Content-Transfer-Encoding', '7bit')
+            local new_headers_str = ""
+            local skip_mode = false
+            local has_ct = false
+            local has_cte = false
 
-            local ct_replaced = false
-            local function rewrite_flat_ct(name, hdr)
-                local lname = string.lower(name)
-                if lname == 'content-type' then
-                    if not ct_replaced then
-                        out[#out + 1] = 'Content-Type: multipart/alternative; boundary="' .. boundary .. '"'
-                        ct_replaced = true
+            for line in raw_headers:gmatch("([^\n]*\n?)") do
+                if line == "" then break end
+                
+                local is_new_header = line:match("^[A-Za-z0-9%-]+:")
+                
+                if is_new_header then
+                    if line:match("^[Cc][Oo][Nn][Tt][Ee][Nn][Tt]%-[Tt][Yy][Pp][Ee]:") then
+                        skip_mode = true
+                        new_headers_str = new_headers_str .. 'Content-Type: multipart/alternative; boundary="' .. boundary .. '"\r\n'
+                        has_ct = true
+                    elseif line:match("^[Cc][Oo][Nn][Tt][Ee][Nn][Tt]%-[Tt][Rr][Aa][Nn][Ss][Ff][Ee][Rr]%-[Ee][Nn][Cc][Oo][Dd][Ii][Nn][Gg]:") then
+                        skip_mode = true
+                        new_headers_str = new_headers_str .. 'Content-Transfer-Encoding: 7bit\r\n'
+                        has_cte = true
+                    else
+                        skip_mode = false
+                        new_headers_str = new_headers_str .. line
                     end
-                    return
-                elseif lname == 'content-transfer-encoding' then
-                    out[#out + 1] = 'Content-Transfer-Encoding: 7bit'
-                    return 
+                else
+                    if not skip_mode then
+                        new_headers_str = new_headers_str .. line
+                    end
                 end
-                out[#out + 1] = hdr.raw:gsub('\r?\n?$', '')
             end
 
-            task:headers_foreach(rewrite_flat_ct, {full = true})
-            
-            if not ct_replaced then
-                out[#out + 1] = 'Content-Type: multipart/alternative; boundary="' .. boundary .. '"'
+            if not has_ct then
+                new_headers_str = new_headers_str .. 'Content-Type: multipart/alternative; boundary="' .. boundary .. '"\r\n'
+            end
+            if not has_cte then
+                new_headers_str = new_headers_str .. 'Content-Transfer-Encoding: 7bit\r\n'
             end
             
-            out[#out + 1] = ""
-            out[#out + 1] = new_multipart_body
+            new_headers_str = new_headers_str:gsub("[\r\n]+$", "")
+            
+            local full_msg = new_headers_str .. "\r\n\r\n" .. new_multipart_body
+            task:set_message(full_msg)
+            
+            task:set_milter_reply({
+                remove_headers = {
+                    ['Content-Type'] = 0,
+                    ['Content-Transfer-Encoding'] = 0
+                },
+                add_headers = {
+                    ['Content-Type'] = { value = 'multipart/alternative; boundary="' .. boundary .. '"', order = 1 },
+                    ['Content-Transfer-Encoding'] = { value = '7bit', order = 1 }
+                }
+            })
             
         else
             local html_success, plain_success = false, false
             raw_body, html_success = process_mime_block(raw_body, "html")
             raw_body, plain_success = process_mime_block(raw_body, "plain")
             
-            local function passthrough_headers(name, hdr)
-                out[#out + 1] = hdr.raw:gsub('\r?\n?$', '')
-            end
+            local new_headers = raw_headers:gsub("\r?\n*$", "")
+            local full_msg = new_headers .. "\r\n\r\n" .. raw_body
             
-            task:headers_foreach(passthrough_headers, {full = true})
-            out[#out + 1] = ""
-            out[#out + 1] = raw_body
+            task:set_message(full_msg)
         end
-
-        local out_parts = {}
-        for _, str in ipairs(out) do
-            out_parts[#out_parts + 1] = str
-            out_parts[#out_parts + 1] = newline_s
-        end
-
-        task:set_message(out_parts)
     end
 
     rspamd_http.request({
@@ -363,7 +372,7 @@ local function inject_signature(task)
 end
 
 rspamd_config:register_symbol({
-    name = 'OPENSIGWEave_INJECT',
+    name = 'OPENSIGWEAVE_INJECT',
     type = 'prefilter',
     callback = inject_signature,
     priority = 0
