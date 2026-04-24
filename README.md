@@ -5,7 +5,7 @@ OpenSigWeave is a centralized, self-hosted email signature manager designed to b
 Instead of forcing users to configure signatures in their individual mail clients (Outlook, Apple Mail, mobile devices, etc.), OpenSigWeave injects rich HTML signatures at the gateway level. It dynamically pulls live user attributes (Phone, Title, Name) from Authentik and appends them to outgoing emails seamlessly.
 
 ## ✨ Key Features
-* **Gateway-Level Injection:** Signatures are applied by the mail server, meaning they work identically across all devices and mail clients.
+* **Gateway-Level Injection:** Signatures are applied by the mail server, meaning they work identically across all devices and email clients.
 * **Authentik SSO Integration:** Login is gated strictly via Authentik OIDC. Live attributes (name, phone number, email, title and domain) are polled instantly during mail transit.
 * **Rich Visual Editor:** A custom UI built with Tailwind CSS, Alpine.js, and Quill.js allows users and admins to design signatures visually or via raw HTML.
 * **Advanced HTML Import:** Sanitize and import complex layouts from external generators with an intelligent visual editor lock that protects table-based signatures from accidental formatting loss.
@@ -13,9 +13,11 @@ Instead of forcing users to configure signatures in their individual mail client
 * **User Overrides:** Allow specific users to customize their signatures, or administratively lock them out.
 * **Intelligent Reply-Chain Detection:** An experimental Lua engine detects when an email is a reply and cleanly injects the signature *above* the quoted history.
 * **Whitespace Normalization (The "Peeler"):** Aggressively strips rogue HTML spaces, empty paragraphs, and quoted-printable soft-breaks from user emails to ensure perfectly crisp spacing around injected signatures.
+* **Plain Text Conversion:** Automatically intercepts flat `text/plain` emails and upgrades them to `multipart/alternative` containers so rich HTML signatures can be injected.
 * **Mobile Signature Assassin:** Automatically detects and strips default mobile sign-offs (e.g., "Sent from my iPhone" or "Get Outlook for iOS") before applying the professional corporate signature.
 * **The "Kill Switch":** Easily disable signatures entirely for specific service accounts (e.g., `noreply@` or `billing@`).
 * **Branding:** Easy white label branding options for logo, title and title color via simple, persistent files.
+* **Deliverability Safe:** By design, **OpenSigWeave** is entirely SPF, DMARC and DKIM safe, so it will never affect your email deliverability.
 
 ---
 ## 📸 UI Images
@@ -58,14 +60,13 @@ New, outbound emails are universally supported across all clients.
 However, because there is no universal web standard for how email clients format reply chains, OpenSigWeave's **Experimental Reply Injection** uses specific Regex patterns to find the exact HTML line where the "quoted history" begins. 
 
 The Lua engine officially supports injecting signatures cleanly into replies sent from the following clients:
-* ***Pending Testing***
-The Lua engine also theorhetically supports injecting signatures into replies sent from these clients, but has not been verified:
+* **Thunderbird:** Desktop and Mobile.
+* **Self-Hosted Webmail:** Horde, Roundcube, SOGo (Mailcow default), and Nextcloud Mail.
+The Lua engine also theoretically supports injecting signatures into replies sent from these clients, but has not been verified:
 * **Microsoft Outlook:** Classic Desktop, New Desktop, OWA (Web), and iOS/Android Mobile Apps.
 * **Apple Mail:** iOS, iPadOS, and macOS native mail apps.
 * **Gmail:** Web, iOS, and Android Mobile Apps.
-* **Thunderbird:** Desktop and Mobile.
 * **Yahoo Mail & Open-Xchange:** Web clients.
-* **Self-Hosted Webmail:** Horde, Roundcube, SOGo (Mailcow default), and Nextcloud Mail.
 
 *Note: If a user sends a reply from an unrecognized client, the Lua engine acts defensively. It will safely abort the inline injection and append the signature to the absolute bottom of the email rather than risk placing it in the middle of a sentence.*
 
