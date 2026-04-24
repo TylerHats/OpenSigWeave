@@ -173,22 +173,38 @@
                             <h4 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">General Settings</h4>
                             
                             <label class="flex items-center cursor-pointer mb-4">
-                                <div class="relative"><input type="checkbox" class="sr-only" x-model="allowOverrides"><div class="block bg-gray-700 w-10 h-6 rounded-full"></div><div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform" :class="allowOverrides ? 'translate-x-4 bg-blue-500' : ''"></div></div>
+                                <div class="relative">
+                                    <input type="checkbox" class="sr-only" x-model="allowOverrides">
+                                    <div class="block w-10 h-6 rounded-full transition-colors duration-200" :class="allowOverrides ? 'bg-blue-500' : 'bg-gray-700'"></div>
+                                    <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform" :class="allowOverrides ? 'translate-x-4' : ''"></div>
+                                </div>
                                 <div class="ml-3 text-sm font-medium text-gray-300">Allow Users to Override Signature</div>
                             </label>
 
                             <label class="flex items-center cursor-pointer mb-4">
-                                <div class="relative"><input type="checkbox" class="sr-only" x-model="injectOnReplies"><div class="block bg-gray-700 w-10 h-6 rounded-full"></div><div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform" :class="injectOnReplies ? 'translate-x-4 bg-purple-500' : ''"></div></div>
+                                <div class="relative">
+                                    <input type="checkbox" class="sr-only" x-model="injectOnReplies">
+                                    <div class="block w-10 h-6 rounded-full transition-colors duration-200" :class="injectOnReplies ? 'bg-purple-500' : 'bg-gray-700'"></div>
+                                    <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform" :class="injectOnReplies ? 'translate-x-4' : ''"></div>
+                                </div>
                                 <div class="ml-3 text-sm font-medium text-gray-300">Enable Experimental Reply Injection <span class="text-gray-500 text-xs ml-2">(Applies signatures to email replies)</span></div>
                             </label>
 
                             <label class="flex items-center cursor-pointer mb-4">
-                                <div class="relative"><input type="checkbox" class="sr-only" x-model="trimWhitespace"><div class="block bg-gray-700 w-10 h-6 rounded-full"></div><div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform" :class="trimWhitespace ? 'translate-x-4 bg-green-500' : ''"></div></div>
+                                <div class="relative">
+                                    <input type="checkbox" class="sr-only" x-model="trimWhitespace">
+                                    <div class="block w-10 h-6 rounded-full transition-colors duration-200" :class="trimWhitespace ? 'bg-green-500' : 'bg-gray-700'"></div>
+                                    <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform" :class="trimWhitespace ? 'translate-x-4' : ''"></div>
+                                </div>
                                 <div class="ml-3 text-sm font-medium text-gray-300">Trim Extra Whitespace <span class="text-gray-500 text-xs ml-2">(Peels empty trailing lines before injecting)</span></div>
                             </label>
 
                             <label class="flex items-center cursor-pointer">
-                                <div class="relative"><input type="checkbox" class="sr-only" x-model="stripDeviceSignatures"><div class="block bg-gray-700 w-10 h-6 rounded-full"></div><div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform" :class="stripDeviceSignatures ? 'translate-x-4 bg-red-500' : ''"></div></div>
+                                <div class="relative">
+                                    <input type="checkbox" class="sr-only" x-model="stripDeviceSignatures">
+                                    <div class="block w-10 h-6 rounded-full transition-colors duration-200" :class="stripDeviceSignatures ? 'bg-red-500' : 'bg-gray-700'"></div>
+                                    <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform" :class="stripDeviceSignatures ? 'translate-x-4' : ''"></div>
+                                </div>
                                 <div class="ml-3 text-sm font-medium text-gray-300">Strip Mobile Device Signatures <span class="text-gray-500 text-xs ml-2">(Removes "Sent from my iPhone", etc.)</span></div>
                             </label>
                         </div>
